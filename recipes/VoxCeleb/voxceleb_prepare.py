@@ -381,11 +381,11 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                 #  Avoid chunks with very small energy
                 print(signal.shape)
                 pdb.set_trace()
-                try:
-                    mean_sig = signal[start_sample:end_sample].abs().mean()
-                except Exception as e:
-                    print(e)
-                    break
+                # try:
+                mean_sig = signal[start_sample:end_sample].abs().mean()
+                # except Exception as e:
+                #     print(e)
+                #     break
                 if mean_sig < amp_th:
                     print("8: ", mean_sig, '<', mean_sig)
                     continue
@@ -500,13 +500,15 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
     for wav in tqdm(wav_lst, ncols=60):
         t_queue.put(wav)
 
-    nj = 1
-    pool = Pool(processes=nj)
-    for i in range(0, nj):
-        pool.apply_async(PrepareCsvProcess, args=(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th))
+    PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th)
 
-    pool.close()  # 关闭进程池，表示不能在往进程池中添加进程
-    pool.join()  # 等待进程池中的所有进程执行完毕，必须在close
+    # nj = 1
+    # pool = Pool(processes=nj)
+    # for i in range(0, nj):
+    #     pool.apply_async(PrepareCsvProcess, args=(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th))
+    #
+    # pool.close()  # 关闭进程池，表示不能在往进程池中添加进程
+    # pool.join()  # 等待进程池中的所有进程执行完毕，必须在close
 
     while not e_queue.empty():
         entry.append(e_queue.get())
