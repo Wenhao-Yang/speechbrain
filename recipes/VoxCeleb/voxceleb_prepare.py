@@ -325,7 +325,7 @@ def _get_chunks(seg_dur, audio_id, audio_duration):
 def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th):
     while True:
         lock_t.acquire()  # 加上锁
-
+        print(os.getpid(), " acqing lock i")
         if not t_queue.empty():
             wav_file = t_queue.get()
             lock_t.release()
@@ -415,11 +415,6 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
 
     manager = Manager()
     lock_t = manager.Lock()
-
-    my_sep = manager.Value(my_sep)
-    random_segment = manager.Value(random_segment)
-    seg_dur = manager.Value(seg_dur)
-    amp_th = manager.Value(amp_th)
 
     t_queue = manager.Queue()
     e_queue = manager.Queue()
