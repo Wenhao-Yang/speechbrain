@@ -378,6 +378,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                 # print("7:", s, e)
 
                 #  Avoid chunks with very small energy
+                print(signal.shape)
                 try:
                     mean_sig = torch.mean(signal[start_sample:end_sample].abs())
                 except Exception as e:
