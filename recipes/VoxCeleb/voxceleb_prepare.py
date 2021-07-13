@@ -342,10 +342,13 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
         audio_id = my_sep.join([spk_id, sess_id, utt_id.split(".")[0]])
 
         # Reading the signal (to retrieve duration in seconds)
+        print("wav_file is: ", wav_file)
         signal, fs = torchaudio.load(wav_file)
+
         signal = signal.squeeze(0)
 
         if random_segment:
+            print("random_segment!")
             audio_duration = signal.shape[0] / SAMPLERATE
             start_sample = 0
             stop_sample = signal.shape[0]
@@ -359,10 +362,11 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                 stop_sample,
                 spk_id,
             ]
+            print(csv_line)
             e_queue.put(csv_line)
         else:
             audio_duration = signal.shape[0] / SAMPLERATE
-
+            print("no random_segment!")
             uniq_chunks_list = _get_chunks(seg_dur, audio_id, audio_duration)
             for chunk in uniq_chunks_list:
                 s, e = chunk.split("_")[-2:]
@@ -383,7 +387,9 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                     end_sample,
                     spk_id,
                 ]
+                print(csv_line)
                 e_queue.put(csv_line)
+        # print("csv_line!")
 
         print('\rProcess [{:8>s}]: [{:>8d}] wav Left'.format
               (str(os.getpid()), t_queue.qsize()), end='')
