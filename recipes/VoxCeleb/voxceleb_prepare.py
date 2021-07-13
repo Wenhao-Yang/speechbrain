@@ -323,13 +323,13 @@ def _get_chunks(seg_dur, audio_id, audio_duration):
 
 def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th):
     while True:
-        print("0: ", os.getpid(), " acqing lock")
+        # print("0: ", os.getpid(), " acqing lock")
         lock_t.acquire()  # 加上锁
 
         if not t_queue.empty():
             wav_file = t_queue.get()
             lock_t.release()
-            print("1: ", os.getpid(), "lock released! ", t_queue.qsize())
+            # print("1: ", os.getpid(), "lock released! ", t_queue.qsize())
         else:
             lock_t.release()
             break
@@ -342,13 +342,12 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
         audio_id = my_sep.join([spk_id, sess_id, utt_id.split(".")[0]])
 
         # Reading the signal (to retrieve duration in seconds)
-        print("2: wav_file is: ", wav_file)
+        # print("2: wav_file is: ", wav_file)
         signal, fs = torchaudio.load(wav_file)
-
         signal = signal.squeeze(0)
 
         if random_segment:
-            print("3: random_segment!")
+            # print("3: random_segment!")
             audio_duration = signal.shape[0] / SAMPLERATE
             start_sample = 0
             stop_sample = signal.shape[0]
@@ -362,24 +361,24 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                 stop_sample,
                 spk_id,
             ]
-            print("4: ", csv_line)
+            # print("4: ", csv_line)
             e_queue.put(csv_line)
         else:
             audio_duration = signal.shape[0] / SAMPLERATE
-            print("3: no random_segment!")
-            print("4: ", seg_dur, audio_id, audio_id)
+            # print("3: no random_segment!")
+            # print("4: ", seg_dur, audio_id, audio_id)
             uniq_chunks_list = _get_chunks(seg_dur, audio_id, audio_duration)
 
-            print("5: ", uniq_chunks_list)
+            # print("5: ", uniq_chunks_list)
             for chunk in uniq_chunks_list:
-                print("6:", chunk)
+                # print("6:", chunk)
                 s, e = chunk.split("_")[-2:]
                 start_sample = int(float(s) * SAMPLERATE)
                 end_sample = int(float(e) * SAMPLERATE)
-                print("7:", s, e)
+                # print("7:", s, e)
 
                 #  Avoid chunks with very small energy
-                mean_sig = torch.mean(np.abs(signal[start_sample:end_sample]))
+                mean_sig = torch.mean(signal[start_sample:end_sample].abs())
                 if mean_sig < amp_th:
                     continue
                 print("8: mean")
