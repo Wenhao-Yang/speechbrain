@@ -344,39 +344,43 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
         signal, fs = torchaudio.load(wav_file)
         signal = signal.squeeze(0)
 
-        if random_segment:
-            audio_duration = signal.shape[0] / SAMPLERATE
-            start_sample = 0
-            stop_sample = signal.shape[0]
+        try:
 
-            # Composition of the csv_line
-            csv_line = [audio_id, str(audio_duration), wav_file, start_sample, stop_sample, spk_id]
-            e_queue.put(csv_line)
-        else:
-            audio_duration = signal.shape[0] / SAMPLERATE
-            uniq_chunks_list = _get_chunks(seg_dur, audio_id, audio_duration)
+            if random_segment:
+                audio_duration = signal.shape[0] / SAMPLERATE
+                start_sample = 0
+                stop_sample = signal.shape[0]
 
-            for chunk in uniq_chunks_list:
-                s, e = chunk.split("_")[-2:]
-                start_sample = int(float(s) * SAMPLERATE)
-                end_sample = int(float(e) * SAMPLERATE)
-
-                #  Avoid chunks with very small energy
-                mean_sig = signal[start_sample:end_sample].abs().mean()
-                if mean_sig < amp_th:
-                    continue
-                print("9: mean")
                 # Composition of the csv_line
-                csv_line = [
-                    chunk,
-                    str(audio_duration),
-                    wav_file,
-                    start_sample,
-                    end_sample,
-                    spk_id,
-                ]
-                print("9: ", csv_line)
+                csv_line = [audio_id, str(audio_duration), wav_file, start_sample, stop_sample, spk_id]
                 e_queue.put(csv_line)
+            else:
+                audio_duration = signal.shape[0] / SAMPLERATE
+                uniq_chunks_list = _get_chunks(seg_dur, audio_id, audio_duration)
+
+                for chunk in uniq_chunks_list:
+                    s, e = chunk.split("_")[-2:]
+                    start_sample = int(float(s) * SAMPLERATE)
+                    end_sample = int(float(e) * SAMPLERATE)
+
+                    #  Avoid chunks with very small energy
+                    mean_sig = signal[start_sample:end_sample].abs().mean()
+                    if mean_sig < amp_th:
+                        continue
+                    print("9: mean")
+                    # Composition of the csv_line
+                    csv_line = [
+                        chunk,
+                        str(audio_duration),
+                        wav_file,
+                        start_sample,
+                        end_sample,
+                        spk_id,
+                    ]
+                    print("9: ", csv_line)
+                    e_queue.put(csv_line)
+        except Exception as e:
+            print(e)
         # print("csv_line!")
 
         print('\rProcess [{:8>s}]: [{:>8d}] wav Left'.format
