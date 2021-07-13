@@ -329,6 +329,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
         if not t_queue.empty():
             wav_file = t_queue.get()
             lock_t.release()
+            print(os.getpid(), "lock released!")
         else:
             lock_t.release()
             break
