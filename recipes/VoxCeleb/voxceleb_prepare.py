@@ -367,9 +367,12 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
         else:
             audio_duration = signal.shape[0] / SAMPLERATE
             print("3: no random_segment!")
+            print("4: ", seg_dur, audio_id, audio_id)
             uniq_chunks_list = _get_chunks(seg_dur, audio_id, audio_duration)
+
+            print("5: ", uniq_chunks_list)
             for chunk in uniq_chunks_list:
-                print(chunk)
+                print("6:", chunk)
                 s, e = chunk.split("_")[-2:]
                 start_sample = int(float(s) * SAMPLERATE)
                 end_sample = int(float(e) * SAMPLERATE)
@@ -388,7 +391,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                     end_sample,
                     spk_id,
                 ]
-                print("4: ",csv_line)
+                print("7: ",csv_line)
                 e_queue.put(csv_line)
         # print("csv_line!")
 
