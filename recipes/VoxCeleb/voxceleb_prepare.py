@@ -324,13 +324,13 @@ def _get_chunks(seg_dur, audio_id, audio_duration):
 
 def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th):
     while True:
-        # print("0: ", os.getpid(), " acqing lock")
+        print("0: ", os.getpid(), " acqing lock")
         lock_t.acquire()  # 加上锁
 
         if not t_queue.empty():
             wav_file = t_queue.get()
             lock_t.release()
-            # print("1: ", os.getpid(), "lock released! ", t_queue.qsize())
+            print("1: ", os.getpid(), "lock released! ", t_queue.qsize())
         else:
             lock_t.release()
             break
@@ -343,7 +343,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
         audio_id = my_sep.join([spk_id, sess_id, utt_id.split(".")[0]])
 
         # Reading the signal (to retrieve duration in seconds)
-        # print("2: wav_file is: ", wav_file)
+        print("2: wav_file is: ", wav_file)
         signal, fs = torchaudio.load(wav_file)
         signal = signal.squeeze(0)
 
