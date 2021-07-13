@@ -375,7 +375,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                 s, e = chunk.split("_")[-2:]
                 start_sample = int(float(s) * SAMPLERATE)
                 end_sample = int(float(e) * SAMPLERATE)
-                # print("7:", s, e)
+                print("7:", start_sample, ' ', end_sample)
 
                 #  Avoid chunks with very small energy
                 print(signal.shape)
@@ -385,8 +385,9 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                     print(e)
                     break
                 if mean_sig < amp_th:
+                    print("8: ", mean_sig, '<', mean_sig)
                     continue
-                print("8: mean")
+                print("9: mean")
                 # Composition of the csv_line
                 csv_line = [
                     chunk,
