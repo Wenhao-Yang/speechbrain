@@ -380,7 +380,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                 #  Avoid chunks with very small energy
                 print(signal.shape)
                 try:
-                    mean_sig = torch.mean(signal[start_sample:end_sample].abs())
+                    mean_sig = signal[start_sample:end_sample].abs().mean()
                 except Exception as e:
                     print(e)
                     break
@@ -498,7 +498,7 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
     for wav in tqdm(wav_lst, ncols=60):
         t_queue.put(wav)
 
-    nj = 8
+    nj = 1
     pool = Pool(processes=nj)
     for i in range(0, nj):
         pool.apply_async(PrepareCsvProcess, args=(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th))
