@@ -410,6 +410,7 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
 
     msg = '\t"Creating csv lists in  %s..."' % (csv_file)
     logger.info(msg)
+    print(os.getpid(), " main process")
 
     csv_output = [["ID", "duration", "wav", "start", "stop", "spk_id"]]
 
