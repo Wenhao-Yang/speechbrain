@@ -354,38 +354,19 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
             stop_sample = signal.shape[0]
 
             # Composition of the csv_line
-            csv_line = [
-                audio_id,
-                str(audio_duration),
-                wav_file,
-                start_sample,
-                stop_sample,
-                spk_id,
-            ]
-            # print("4: ", csv_line)
+            csv_line = [audio_id, str(audio_duration), wav_file, start_sample, stop_sample, spk_id]
             e_queue.put(csv_line)
         else:
             audio_duration = signal.shape[0] / SAMPLERATE
-            # print("3: no random_segment!")
-            # print("4: ", seg_dur, audio_id, audio_id)
             uniq_chunks_list = _get_chunks(seg_dur, audio_id, audio_duration)
 
-            # print("5: ", uniq_chunks_list)
             for chunk in uniq_chunks_list:
-                # print("6:", chunk)
                 s, e = chunk.split("_")[-2:]
                 start_sample = int(float(s) * SAMPLERATE)
                 end_sample = int(float(e) * SAMPLERATE)
-                print("7:", start_sample, ' ', end_sample)
 
                 #  Avoid chunks with very small energy
-                print(signal.shape)
-                pdb.set_trace()
-                # try:
                 mean_sig = signal[start_sample:end_sample].abs().mean()
-                # except Exception as e:
-                #     print(e)
-                #     break
                 if mean_sig < amp_th:
                     print("8: ", mean_sig, '<', mean_sig)
                     continue
@@ -399,7 +380,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                     end_sample,
                     spk_id,
                 ]
-                print("9: ",csv_line)
+                print("9: ", csv_line)
                 e_queue.put(csv_line)
         # print("csv_line!")
 
@@ -500,15 +481,15 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
     for wav in tqdm(wav_lst, ncols=60):
         t_queue.put(wav)
 
-    PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th)
+    # PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th)
 
-    # nj = 1
-    # pool = Pool(processes=nj)
-    # for i in range(0, nj):
-    #     pool.apply_async(PrepareCsvProcess, args=(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th))
-    #
-    # pool.close()  # 关闭进程池，表示不能在往进程池中添加进程
-    # pool.join()  # 等待进程池中的所有进程执行完毕，必须在close
+    nj = 2
+    pool = Pool(processes=nj)
+    for i in range(0, nj):
+        pool.apply_async(PrepareCsvProcess, args=(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th))
+
+    pool.close()  # 关闭进程池，表示不能在往进程池中添加进程
+    pool.join()  # 等待进程池中的所有进程执行完毕，必须在close
 
     while not e_queue.empty():
         entry.append(e_queue.get())
