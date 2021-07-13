@@ -16,7 +16,7 @@ train_annotation: !ref <save_folder>/train.csv
 valid_annotation: !ref <save_folder>/dev.csv
 
 # Folder to extract data augmentation files
-rir_folder: !ref <data_folder> # Change it if needed
+rir_folder: /home/storage/yangwenhao/dataset/RIRS_NOISES # !ref <data_folder> # Change it if needed
 
 # Use the following links for the official voxceleb splits:
 # VoxCeleb1 (cleaned): https://www.robots.ox.ac.uk/~vgg/data/voxceleb/meta/veri_test2.txt
