@@ -376,12 +376,13 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                 s, e = chunk.split("_")[-2:]
                 start_sample = int(float(s) * SAMPLERATE)
                 end_sample = int(float(e) * SAMPLERATE)
+                print("7:", s, e)
 
                 #  Avoid chunks with very small energy
                 mean_sig = torch.mean(np.abs(signal[start_sample:end_sample]))
                 if mean_sig < amp_th:
                     continue
-
+                print("8: mean")
                 # Composition of the csv_line
                 csv_line = [
                     chunk,
@@ -391,7 +392,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                     end_sample,
                     spk_id,
                 ]
-                print("7: ",csv_line)
+                print("9: ",csv_line)
                 e_queue.put(csv_line)
         # print("csv_line!")
 
