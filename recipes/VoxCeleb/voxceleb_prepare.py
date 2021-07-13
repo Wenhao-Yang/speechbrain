@@ -323,13 +323,13 @@ def _get_chunks(seg_dur, audio_id, audio_duration):
 
 def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th):
     while True:
-        print(os.getpid(), " acqing lock")
+        print("0: ", os.getpid(), " acqing lock")
         lock_t.acquire()  # 加上锁
 
         if not t_queue.empty():
             wav_file = t_queue.get()
             lock_t.release()
-            print(os.getpid(), "lock released!")
+            print("1: ", os.getpid(), "lock released! ", t_queue.qsize())
         else:
             lock_t.release()
             break
@@ -342,13 +342,13 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
         audio_id = my_sep.join([spk_id, sess_id, utt_id.split(".")[0]])
 
         # Reading the signal (to retrieve duration in seconds)
-        print("wav_file is: ", wav_file)
+        print("2: wav_file is: ", wav_file)
         signal, fs = torchaudio.load(wav_file)
 
         signal = signal.squeeze(0)
 
         if random_segment:
-            print("random_segment!")
+            print("3: random_segment!")
             audio_duration = signal.shape[0] / SAMPLERATE
             start_sample = 0
             stop_sample = signal.shape[0]
@@ -362,11 +362,11 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                 stop_sample,
                 spk_id,
             ]
-            print(csv_line)
+            print("4: ", csv_line)
             e_queue.put(csv_line)
         else:
             audio_duration = signal.shape[0] / SAMPLERATE
-            print("no random_segment!")
+            print("3: no random_segment!")
             uniq_chunks_list = _get_chunks(seg_dur, audio_id, audio_duration)
             for chunk in uniq_chunks_list:
                 print(chunk)
@@ -388,7 +388,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                     end_sample,
                     spk_id,
                 ]
-                print(csv_line)
+                print("4: ",csv_line)
                 e_queue.put(csv_line)
         # print("csv_line!")
 
