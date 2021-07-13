@@ -323,7 +323,7 @@ def _get_chunks(seg_dur, audio_id, audio_duration):
 
 def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th):
     while True:
-        # print(os.getpid(), " acqing lock i")
+        print(os.getpid(), " acqing lock")
         lock_t.acquire()  # 加上锁
 
         if not t_queue.empty():
