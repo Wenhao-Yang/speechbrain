@@ -214,14 +214,13 @@ if __name__ == "__main__":
     # Dataset prep (parsing VoxCeleb and annotation into csv files)
     from voxceleb_prepare import prepare_voxceleb  # noqa
 
-    prepare_voxceleb(kwargs={
-            "data_folder": hparams["data_folder"],
-            "save_folder": hparams["save_folder"],
-            "verification_pairs_file": veri_file_path,
-            "splits": ["train", "dev"],
-            "split_ratio": [90, 10],
-            "seg_dur": hparams["sentence_len"],
-        })
+    prepare_voxceleb(data_folder=hparams["data_folder"],
+            save_folder=hparams["save_folder"],
+            verification_pairs_file=veri_file_path,
+            splits=["train", "dev"],
+            split_ratio=[90, 10],
+            seg_dur=hparams["sentence_len"],
+        )
     # run_on_main(
     #     prepare_voxceleb,
     #     kwargs={
