@@ -8,6 +8,7 @@ import os
 import csv
 import logging
 import glob
+import pdb
 import random
 import shutil
 import sys  # noqa F401
@@ -379,6 +380,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
 
                 #  Avoid chunks with very small energy
                 print(signal.shape)
+                pdb.set_trace()
                 try:
                     mean_sig = signal[start_sample:end_sample].abs().mean()
                 except Exception as e:
