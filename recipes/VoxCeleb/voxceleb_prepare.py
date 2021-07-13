@@ -384,8 +384,8 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                 ]
                 e_queue.put(csv_line)
 
-        print('\rProcess [{:8>s}]: [{:>8d}] idx Left and [{:>8d}] egs Left'.format
-              (str(os.getpid()), t_queue.qsize(), e_queue.qsize()), end='')
+        print('\rProcess [{:8>s}]: [{:>8d}] wav Left'.format
+              (str(os.getpid()), t_queue.qsize()), end='')
 
 
 def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
