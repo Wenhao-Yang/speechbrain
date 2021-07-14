@@ -420,12 +420,12 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
     my_sep = "--"
     entry = []
 
-    # manager = Manager()
-    # lock_t = manager.Lock()
-    #
-    # t_queue = manager.Queue()
-    # e_queue = manager.Queue()
-    # q_queue = manager.Queue()
+    manager = Manager()
+    lock_t = manager.Lock()
+
+    t_queue = manager.Queue()
+    e_queue = manager.Queue()
+    q_queue = manager.Queue()
 
 
     # Processing all the wav files in the list
