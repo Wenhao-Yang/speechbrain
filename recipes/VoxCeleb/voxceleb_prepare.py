@@ -330,6 +330,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
         if not t_queue.empty():
             wav_file = t_queue.get()
             lock_t.release()
+            pbar.update(1)
         else:
             lock_t.release()
             break
@@ -385,7 +386,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
         except Exception as e:
             print(t_queue.qsize())
         # print("csv_line!")
-        pbar.update(1)
+
         # print('\rProcess [{:8>s}]: [{:>8d}] wav Left'.format
         #       (str(os.getpid()), t_queue.qsize()), end='')
 
