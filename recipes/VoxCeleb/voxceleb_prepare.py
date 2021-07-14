@@ -484,7 +484,7 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
 
     # PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th)
 
-    nj = 2
+    nj = 8
     pool = Pool(processes=nj)
     for i in range(0, nj):
         pool.apply_async(PrepareCsvProcess, args=(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th))
