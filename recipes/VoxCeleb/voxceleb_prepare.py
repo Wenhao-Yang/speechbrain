@@ -364,7 +364,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                     end_sample = int(float(e) * SAMPLERATE)
 
                     #  Avoid chunks with very small energy
-                    # mean_sig = signal[start_sample:end_sample].abs().mean()
+                    mean_sig = signal[start_sample:end_sample].abs().mean()
                     # if mean_sig < amp_th:
                     #     continue
                     # print("9: mean")
