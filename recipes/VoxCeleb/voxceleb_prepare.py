@@ -419,86 +419,86 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
     my_sep = "--"
     entry = []
 
-    manager = Manager()
-    lock_t = manager.Lock()
-
-    t_queue = manager.Queue()
-    e_queue = manager.Queue()
-    q_queue = manager.Queue()
+    # manager = Manager()
+    # lock_t = manager.Lock()
+    #
+    # t_queue = manager.Queue()
+    # e_queue = manager.Queue()
+    # q_queue = manager.Queue()
 
 
     # Processing all the wav files in the list
-    # for wav_file in tqdm(wav_lst, dynamic_ncols=True):
-    #     # Getting sentence and speaker ids
-    #     try:
-    #         [spk_id, sess_id, utt_id] = wav_file.split("/")[-3:]
-    #     except ValueError:
-    #         logger.info(f"Malformed path: {wav_file}")
-    #         continue
-    #     audio_id = my_sep.join([spk_id, sess_id, utt_id.split(".")[0]])
-    #
-    #     # Reading the signal (to retrieve duration in seconds)
-    #     signal, fs = torchaudio.load(wav_file)
-    #     signal = signal.squeeze(0)
-    #     audio_duration = signal.shape[0] / SAMPLERATE
-    #
-    #     if random_segment:
-    #         start_sample = 0
-    #         stop_sample = signal.shape[0]
-    #
-    #         # Composition of the csv_line
-    #         csv_line = [
-    #             audio_id,
-    #             str(audio_duration),
-    #             wav_file,
-    #             start_sample,
-    #             stop_sample,
-    #             spk_id,
-    #         ]
-    #         entry.append(csv_line)
-    #     else:
-    #         uniq_chunks_list = _get_chunks(seg_dur, audio_id, audio_duration)
-    #         for chunk in uniq_chunks_list:
-    #             s, e = chunk.split("_")[-2:]
-    #             start_sample = int(float(s) * SAMPLERATE)
-    #             end_sample = int(float(e) * SAMPLERATE)
-    #
-    #             #  Avoid chunks with very small energy
-    #             mean_sig = torch.mean(np.abs(signal[start_sample:end_sample]))
-    #             if mean_sig < amp_th:
-    #                 continue
-    #
-    #             # Composition of the csv_line
-    #             csv_line = [
-    #                 chunk,
-    #                 str(audio_duration),
-    #                 wav_file,
-    #                 start_sample,
-    #                 end_sample,
-    #                 spk_id,
-    #             ]
-    #             entry.append(csv_line)
+    for wav_file in tqdm(wav_lst, dynamic_ncols=True):
+        # Getting sentence and speaker ids
+        try:
+            [spk_id, sess_id, utt_id] = wav_file.split("/")[-3:]
+        except ValueError:
+            logger.info(f"Malformed path: {wav_file}")
+            continue
+        audio_id = my_sep.join([spk_id, sess_id, utt_id.split(".")[0]])
 
-    for wav in tqdm(wav_lst, ncols=60):
-        t_queue.put(wav)
-    length_pbar = len(wav_lst)
+        # Reading the signal (to retrieve duration in seconds)
+        signal, fs = torchaudio.load(wav_file)
+        signal = signal.squeeze(0)
+        audio_duration = signal.shape[0] / SAMPLERATE
 
-    # PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th)
-    nj = 12
-    proc = Process(target=listener, args=(q_queue, length_pbar))
-    proc.start()
-    pool = Pool(processes=nj)
-    for i in range(0, nj):
-        pool.apply_async(PrepareCsvProcess, args=(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th, q_queue))
+        if random_segment:
+            start_sample = 0
+            stop_sample = signal.shape[0]
 
-    pool.close()  # 关闭进程池，表示不能在往进程池中添加进程
-    pool.join()  # 等待进程池中的所有进程执行完毕，必须在close
+            # Composition of the csv_line
+            csv_line = [
+                audio_id,
+                str(audio_duration),
+                wav_file,
+                start_sample,
+                stop_sample,
+                spk_id,
+            ]
+            entry.append(csv_line)
+        else:
+            uniq_chunks_list = _get_chunks(seg_dur, audio_id, audio_duration)
+            for chunk in uniq_chunks_list:
+                s, e = chunk.split("_")[-2:]
+                start_sample = int(float(s) * SAMPLERATE)
+                end_sample = int(float(e) * SAMPLERATE)
 
-    q_queue.put(None)
-    proc.join()
+                #  Avoid chunks with very small energy
+                mean_sig = torch.mean(np.abs(signal[start_sample:end_sample]))
+                if mean_sig < amp_th:
+                    continue
 
-    while not e_queue.empty():
-        entry.append(e_queue.get())
+                # Composition of the csv_line
+                csv_line = [
+                    chunk,
+                    str(audio_duration),
+                    wav_file,
+                    start_sample,
+                    end_sample,
+                    spk_id,
+                ]
+                entry.append(csv_line)
+
+    # for wav in tqdm(wav_lst, ncols=60):
+    #     t_queue.put(wav)
+    # length_pbar = len(wav_lst)
+    #
+    # # PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th)
+    # nj = 12
+    # proc = Process(target=listener, args=(q_queue, length_pbar))
+    # proc.start()
+    # pool = Pool(processes=nj)
+    # for i in range(0, nj):
+    #     pool.apply_async(PrepareCsvProcess, args=(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th, q_queue))
+    #
+    # pool.close()  # 关闭进程池，表示不能在往进程池中添加进程
+    # pool.join()  # 等待进程池中的所有进程执行完毕，必须在close
+    #
+    # q_queue.put(None)
+    # proc.join()
+    #
+    # while not e_queue.empty():
+    #     entry.append(e_queue.get())
 
     csv_output = csv_output + entry
 
