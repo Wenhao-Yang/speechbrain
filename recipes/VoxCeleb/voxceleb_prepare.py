@@ -323,7 +323,7 @@ def _get_chunks(seg_dur, audio_id, audio_duration):
     return chunk_lst
 
 
-def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th):
+def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th, pbar):
     while True:
         lock_t.acquire()  # 加上锁
         # print(os.getpid(), " acqing lock i")
@@ -383,11 +383,11 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                     # print("9: ", csv_line)
                     e_queue.put(csv_line)
         except Exception as e:
-            print(e)
+            print(t_queue.qsize())
         # print("csv_line!")
-
-        print('\rProcess [{:8>s}]: [{:>8d}] wav Left'.format
-              (str(os.getpid()), t_queue.qsize()), end='')
+        pbar.update(1)
+        # print('\rProcess [{:8>s}]: [{:>8d}] wav Left'.format
+        #       (str(os.getpid()), t_queue.qsize()), end='')
 
 
 def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
@@ -483,14 +483,14 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
         t_queue.put(wav)
 
     # PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th)
+    with tqdm(total=len(wav_lst)) as pbar:
+        nj = 8
+        pool = Pool(processes=nj)
+        for i in range(0, nj):
+            pool.apply_async(PrepareCsvProcess, args=(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th, pbar))
 
-    nj = 8
-    pool = Pool(processes=nj)
-    for i in range(0, nj):
-        pool.apply_async(PrepareCsvProcess, args=(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th))
-
-    pool.close()  # 关闭进程池，表示不能在往进程池中添加进程
-    pool.join()  # 等待进程池中的所有进程执行完毕，必须在close
+        pool.close()  # 关闭进程池，表示不能在往进程池中添加进程
+        pool.join()  # 等待进程池中的所有进程执行完毕，必须在close
 
     while not e_queue.empty():
         entry.append(e_queue.get())
