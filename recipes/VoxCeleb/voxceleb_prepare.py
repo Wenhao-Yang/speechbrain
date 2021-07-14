@@ -14,6 +14,7 @@ import shutil
 import sys  # noqa F401
 import numpy as np
 import torch
+import soundfile as sf
 import torchaudio
 from tqdm.contrib import tqdm
 from multiprocessing import Pool, Manager
@@ -341,8 +342,10 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
         audio_id = my_sep.join([spk_id, sess_id, utt_id.split(".")[0]])
 
         # Reading the signal (to retrieve duration in seconds)
-        signal, fs = torchaudio.load(wav_file)
-        signal = signal.squeeze(0)
+        signal, fs = sf.read(wav_file, dtype='float')
+        # signal, fs = torchaudio.load(wav_file)
+        if len(signal.shape) == 2:
+            signal = signal.mean(axis=0)
 
         try:
 
@@ -364,7 +367,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
                     end_sample = int(float(e) * SAMPLERATE)
 
                     #  Avoid chunks with very small energy
-                    mean_sig = signal[start_sample:end_sample].abs().mean()
+                    mean_sig = np.abs(signal[start_sample:end_sample]).mean()
                     # if mean_sig < amp_th:
                     #     continue
                     # print("9: mean")
