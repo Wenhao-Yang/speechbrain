@@ -17,7 +17,7 @@ import torch
 import soundfile as sf
 import torchaudio
 from tqdm.contrib import tqdm
-from multiprocessing import Pool, Manager
+from multiprocessing import Pool, Manager, Process
 from speechbrain.dataio.dataio import (
     load_pkl,
     save_pkl,
@@ -323,14 +323,14 @@ def _get_chunks(seg_dur, audio_id, audio_duration):
     return chunk_lst
 
 
-def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th, pbar):
+def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th, q_queue):
     while True:
         lock_t.acquire()  # 加上锁
         # print(os.getpid(), " acqing lock i")
         if not t_queue.empty():
             wav_file = t_queue.get()
             lock_t.release()
-            pbar.update(1)
+            q_queue.put(1)
         else:
             lock_t.release()
             break
@@ -390,6 +390,10 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
         # print('\rProcess [{:8>s}]: [{:>8d}] wav Left'.format
         #       (str(os.getpid()), t_queue.qsize()), end='')
 
+def listener(q, total_num=10000):
+    pbar = tqdm(total=total_num)
+    for item in iter(q.get, None):
+     pbar.update()
 
 def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
     """
@@ -427,6 +431,8 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
 
     t_queue = manager.Queue()
     e_queue = manager.Queue()
+    q_queue = manager.Queue()
+
 
     # Processing all the wav files in the list
     # for wav_file in tqdm(wav_lst, dynamic_ncols=True):
@@ -482,16 +488,21 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
 
     for wav in tqdm(wav_lst, ncols=60):
         t_queue.put(wav)
+    length_pbar = len(wav_lst)
 
     # PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th)
-    with tqdm(total=len(wav_lst)) as pbar:
-        nj = 8
-        pool = Pool(processes=nj)
-        for i in range(0, nj):
-            pool.apply_async(PrepareCsvProcess, args=(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th, pbar))
+    nj = 8
+    proc = Process(target=listener, args=(q_queue, length_pbar))
+    proc.start()
+    pool = Pool(processes=nj)
+    for i in range(0, nj):
+        pool.apply_async(PrepareCsvProcess, args=(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th, q_queue))
 
-        pool.close()  # 关闭进程池，表示不能在往进程池中添加进程
-        pool.join()  # 等待进程池中的所有进程执行完毕，必须在close
+    pool.close()  # 关闭进程池，表示不能在往进程池中添加进程
+    pool.join()  # 等待进程池中的所有进程执行完毕，必须在close
+
+    q_queue.put(None)
+    proc.join()
 
     while not e_queue.empty():
         entry.append(e_queue.get())
