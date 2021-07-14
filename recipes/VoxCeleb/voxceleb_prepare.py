@@ -326,7 +326,7 @@ def _get_chunks(seg_dur, audio_id, audio_duration):
 def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th):
     while True:
         lock_t.acquire()  # 加上锁
-        print(os.getpid(), " acqing lock i")
+        # print(os.getpid(), " acqing lock i")
         if not t_queue.empty():
             wav_file = t_queue.get()
             lock_t.release()
@@ -368,20 +368,20 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
 
                     #  Avoid chunks with very small energy
                     mean_sig = np.abs(signal[start_sample:end_sample]).mean()
-                    # if mean_sig < amp_th:
-                    #     continue
+                    if mean_sig < amp_th:
+                        continue
                     # print("9: mean")
-                    # # Composition of the csv_line
-                    # csv_line = [
-                    #     chunk,
-                    #     str(audio_duration),
-                    #     wav_file,
-                    #     start_sample,
-                    #     end_sample,
-                    #     spk_id,
-                    # ]
+                    # Composition of the csv_line
+                    csv_line = [
+                        chunk,
+                        str(audio_duration),
+                        wav_file,
+                        start_sample,
+                        end_sample,
+                        spk_id,
+                    ]
                     # print("9: ", csv_line)
-                    # e_queue.put(csv_line)
+                    e_queue.put(csv_line)
         except Exception as e:
             print(e)
         # print("csv_line!")
