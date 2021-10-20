@@ -144,3 +144,4 @@ dmypy.json
 # Mac OS
 .DS_Store
 .idea
+samples/voxceleb_samples/wav
