@@ -16,7 +16,7 @@ import pathlib
 import sys
 
 
-pn_dir = int(sys.argv[1])
+pn_dir = sys.argv[1]
 
 pn_dir=pathlib.Path(pn_dir)
 
