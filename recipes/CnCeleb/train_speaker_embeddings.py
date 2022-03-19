@@ -212,10 +212,10 @@ if __name__ == "__main__":
     download_file(hparams["verification_file"], veri_file_path)
 
     # Dataset prep (parsing VoxCeleb and annotation into csv files)
-    from voxceleb_prepare import prepare_voxceleb  # noqa
+    from cnceleb_prepare import prepare_cnceleb  # noqa
 
     run_on_main(
-        prepare_voxceleb,
+        prepare_cnceleb,
         kwargs={
             "data_folder": hparams["data_folder"],
             "save_folder": hparams["save_folder"],
