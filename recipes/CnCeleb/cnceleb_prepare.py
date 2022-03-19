@@ -403,7 +403,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
         #       (str(os.getpid()), t_queue.qsize()), end='')
 
 def listener(q, total_num=10000):
-    pbar = tqdm(total=total_num)
+    pbar = tqdm(total=total_num, ncols=60)
     for item in iter(q.get, None):
      pbar.update()
 
