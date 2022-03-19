@@ -270,7 +270,7 @@ def _get_utt_split_lists(
     """
     train_lst = []
     dev_lst = []
-    pdb.set_trace()
+    # pdb.set_trace()
     print("Getting file list...")
     for data_folder in data_folders:
 
@@ -285,7 +285,7 @@ def _get_utt_split_lists(
         test_spks = set([snt.split("/")[1].split('-')[0] for snt in test_lst])
         print('There are %d spks in test trials!' % (len(test_spks)))
 
-        path = os.path.join(data_folder, "data", "**", "*.wav")
+        path = os.path.join(data_folder, "data", "**", "*.flac")
         if split_speaker:
             # avoid test speakers for train and dev splits
             audio_files_dict = {}
@@ -293,7 +293,7 @@ def _get_utt_split_lists(
                 spk_id = f.split("/data/")[1].split("/")[0]
                 if spk_id not in test_spks:
                     audio_files_dict.setdefault(spk_id, []).append(f)
-
+            pdb.set_trace()
             spk_id_list = list(audio_files_dict.keys())
             random.shuffle(spk_id_list)
             split = int(0.01 * split_ratio[0] * len(spk_id_list))
