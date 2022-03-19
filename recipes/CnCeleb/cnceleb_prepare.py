@@ -156,6 +156,7 @@ def prepare_cnceleb(
         data_folder, split_ratio, verification_pairs_file, split_speaker
     )
 
+    pdb.set_trace()
     # Creating csv file for training data
     if "train" in splits:
         prepare_csv(
@@ -278,13 +279,13 @@ def _get_utt_split_lists(
             for line in open(verification_pairs_file)
         ]
         test_lst = set(sorted(test_lst))
+        print('There are %d utterances in test trials!' % (len(test_lst)))
 
         # test_spks = [snt.split("/")[0] for snt in test_lst]
-
-        test_spks = [snt.split("/")[1].split('-')[0] for snt in test_lst]
+        test_spks = set([snt.split("/")[1].split('-')[0] for snt in test_lst])
+        print('There are %d spks in test trials!' % (len(test_spks)))
 
         path = os.path.join(data_folder, "data", "**", "*.wav")
-
         if split_speaker:
             # avoid test speakers for train and dev splits
             audio_files_dict = {}
@@ -499,6 +500,7 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
 
     for wav in tqdm(wav_lst, ncols=60):
         t_queue.put(wav)
+
     length_pbar = len(wav_lst)
 
     # PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th)
