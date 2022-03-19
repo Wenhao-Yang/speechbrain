@@ -354,11 +354,11 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
             break
 
         try:
-            [spk_id, sess_id, utt_id] = wav_file.split("/")[-3:]
+            [spk_id, utt_id] = wav_file.split("/")[-2:]
         except ValueError:
             logger.info(f"Malformed path: {wav_file}")
             continue
-        audio_id = my_sep.join([spk_id, sess_id, utt_id.split(".")[0]])
+        audio_id = my_sep.join([spk_id, utt_id.split(".")[0]])
 
         # Reading the signal (to retrieve duration in seconds)
         # signal, fs = sf.read(wav_file, dtype='float')
@@ -445,7 +445,6 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
     e_queue = manager.Queue()
     q_queue = manager.Queue()
 
-
     # Processing all the wav files in the list
     # for wav_file in tqdm(wav_lst, dynamic_ncols=True):
     #     # Getting sentence and speaker ids
@@ -504,7 +503,7 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
     length_pbar = len(wav_lst)
 
     # PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th)
-    nj = 12
+    nj = 16
     proc = Process(target=listener, args=(q_queue, length_pbar))
     proc.start()
     pool = Pool(processes=nj)
