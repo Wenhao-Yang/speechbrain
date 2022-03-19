@@ -49,7 +49,7 @@ TEST_WAV = "vox1_test_wav.zip"
 META = "meta"
 
 
-def prepare_cncceleb(
+def prepare_cnceleb(
     data_folder,
     save_folder,
     verification_pairs_file,
