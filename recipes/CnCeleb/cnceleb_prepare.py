@@ -156,7 +156,7 @@ def prepare_cnceleb(
         data_folder, split_ratio, verification_pairs_file, split_speaker
     )
 
-    pdb.set_trace()
+    # pdb.set_trace()
     # Creating csv file for training data
     if "train" in splits:
         prepare_csv(
@@ -293,7 +293,7 @@ def _get_utt_split_lists(
                 spk_id = f.split("/data/")[1].split("/")[0]
                 if spk_id not in test_spks:
                     audio_files_dict.setdefault(spk_id, []).append(f)
-            pdb.set_trace()
+            # pdb.set_trace()
             spk_id_list = list(audio_files_dict.keys())
             random.shuffle(spk_id_list)
             split = int(0.01 * split_ratio[0] * len(spk_id_list))
@@ -564,9 +564,10 @@ def prepare_csv_enrol_test(data_folders, save_folder, verification_pairs_file):
         enrol_ids, test_ids = [], []
 
         # Get unique ids (enrol and test utterances)
-        for line in open(test_lst_file):
-            e_id = line.split(" ")[1].rstrip().split(".")[0].strip()
-            t_id = line.split(" ")[2].rstrip().split(".")[0].strip()
+        for line in open(test_lst_file): # id00800-enroll test/id00800-singing-01-005.wav 1
+            e_id = line.split(" ")[0] #.rstrip().split(".")[0].strip()
+            t_id = line.split(" ")[1].split("/")[1].split(".")[0].strip()
+
             enrol_ids.append(e_id)
             test_ids.append(t_id)
 
@@ -576,8 +577,8 @@ def prepare_csv_enrol_test(data_folders, save_folder, verification_pairs_file):
         # Prepare enrol csv
         logger.info("preparing enrol csv")
         enrol_csv = []
-        for id in enrol_ids:
-            wav = data_folder + "/data/" + id + "-enroll.wav"
+        for id in enrol_ids: # id00800-enroll
+            wav = data_folder + "/eval/enroll/" + id + ".wav"
 
             # Reading the signal (to retrieve duration in seconds)
             signal, fs = torchaudio.load(wav)
@@ -585,8 +586,8 @@ def prepare_csv_enrol_test(data_folders, save_folder, verification_pairs_file):
             audio_duration = signal.shape[0] / SAMPLERATE
             start_sample = 0
             stop_sample = signal.shape[0]
-            [spk_id, sess_id, utt_id] = wav.split("/")[-3:]
 
+            spk_id = id.split("-")[0]
             csv_line = [id, audio_duration, wav, start_sample, stop_sample, spk_id,]
 
             enrol_csv.append(csv_line)
@@ -605,8 +606,8 @@ def prepare_csv_enrol_test(data_folders, save_folder, verification_pairs_file):
         # Prepare test csv
         logger.info("preparing test csv")
         test_csv = []
-        for id in test_ids:
-            wav = data_folder + "/data/" + id + ".wav"
+        for id in test_ids: # id00800-singing-01-005
+            wav = data_folder + "/eval/test/" + id + ".wav"
 
             # Reading the signal (to retrieve duration in seconds)
             signal, fs = torchaudio.load(wav)
@@ -614,7 +615,7 @@ def prepare_csv_enrol_test(data_folders, save_folder, verification_pairs_file):
             audio_duration = signal.shape[0] / SAMPLERATE
             start_sample = 0
             stop_sample = signal.shape[0]
-            [spk_id, sess_id, utt_id] = wav.split("/")[-3:]
+            spk_id = id.split("-")[0]
 
             csv_line = [
                 id,
