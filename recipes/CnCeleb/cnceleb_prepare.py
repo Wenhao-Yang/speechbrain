@@ -270,7 +270,7 @@ def _get_utt_split_lists(
     """
     train_lst = []
     dev_lst = []
-
+    pdb.set_trace()
     print("Getting file list...")
     for data_folder in data_folders:
 
