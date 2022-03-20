@@ -22,7 +22,7 @@ from hyperpyyaml import load_hyperpyyaml
 from speechbrain.utils.metric_stats import EER, minDCF
 from speechbrain.utils.data_utils import download_file
 from speechbrain.utils.distributed import run_on_main
-
+import pickle
 
 # Compute embeddings from the waveforms
 def compute_embedding(wavs, wav_lens):
@@ -54,7 +54,7 @@ def compute_embedding_loop(data_loader):
     embedding_dict = {}
 
     with torch.no_grad():
-        for batch in tqdm(data_loader, dynamic_ncols=True):
+        for batch in tqdm(data_loader, ncols=100):
             batch = batch.to(params["device"])
             seg_ids = batch.id
             wavs, lens = batch.sig
@@ -92,9 +92,10 @@ def get_verification_scores(veri_test):
     for i, line in enumerate(veri_test):
 
         # Reading verification file (enrol_file test_file label)
-        lab_pair = int(line.split(" ")[0].rstrip().split(".")[0].strip())
-        enrol_id = line.split(" ")[1].rstrip().split(".")[0].strip()
-        test_id = line.split(" ")[2].rstrip().split(".")[0].strip()
+        lab_pair = int(line.split(" ")[2].rstrip().split(".")[0].strip())
+        enrol_id = line.split(" ")[0].rstrip().split(".")[0].strip()
+        test_id = line.split(" ")[1].rstrip().split(".")[0].strip().split("/")[1]
+
         enrol = enrol_dict[enrol_id]
         test = test_dict[test_id]
 
@@ -226,7 +227,8 @@ if __name__ == "__main__":
     veri_file_path = os.path.join(
         params["save_folder"], os.path.basename(params["verification_file"])
     )
-    download_file(params["verification_file"], veri_file_path)
+    assert os.path.exists(veri_file_path)
+    # download_file(params["verification_file"], veri_file_path)
 
     from cnceleb_prepare import prepare_cnceleb  # noqa E402
 
@@ -248,6 +250,7 @@ if __name__ == "__main__":
         source=params["voxceleb_source"]
         if "voxceleb_source" in params
         else None,
+        skip_prep=params["skip_prep"],
     )
 
     # here we create the datasets objects as well as tokenization and encoding
@@ -263,16 +266,39 @@ if __name__ == "__main__":
     # Computing  enrollment and test embeddings
     logger.info("Computing enroll/test embeddings...")
 
-    # First run
-    enrol_dict = compute_embedding_loop(enrol_dataloader)
-    test_dict = compute_embedding_loop(test_dataloader)
+    enroll_dict_pickle = os.path.join(params["save_folder"], 'xvectors', 'enroll.pickle')
+    test_dict_pickle = os.path.join(params["save_folder"], 'xvectors', 'test.pickle')
+    train_dict_pickle = os.path.join(params["save_folder"], 'xvectors', 'train.pickle')
 
-    # Second run (normalization stats are more stable)
-    enrol_dict = compute_embedding_loop(enrol_dataloader)
-    test_dict = compute_embedding_loop(test_dataloader)
+    if os.path.exists(enroll_dict_pickle) and os.path.exists(test_dict_pickle):
+        with open(enroll_dict_pickle, 'rb') as f:
+            enrol_dict = pickle.load(f)
+        with open(test_dict_pickle, 'rb') as f:
+            test_dict = pickle.load(f)
+    else:
+        # First run
+        enrol_dict = compute_embedding_loop(enrol_dataloader)
+        test_dict = compute_embedding_loop(test_dataloader)
+
+        # Second run (normalization stats are more stable)
+        enrol_dict = compute_embedding_loop(enrol_dataloader)
+        test_dict = compute_embedding_loop(test_dataloader)
+
+        with open(enroll_dict_pickle, 'wb') as f:
+            pickle.dump(enrol_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        with open(test_dict_pickle, 'wb') as f:
+            pickle.dump(test_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+
 
     if "score_norm" in params:
-        train_dict = compute_embedding_loop(train_dataloader)
+        if os.path.exists(train_dict_pickle):
+            with open(train_dict_pickle, 'rb') as f:
+                train_dict = pickle.load(f)
+        else:
+            train_dict = compute_embedding_loop(train_dataloader)
+            with open(train_dict_pickle, 'wb') as f:
+                pickle.dump(train_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     # Compute the EER
     logger.info("Computing EER..")
