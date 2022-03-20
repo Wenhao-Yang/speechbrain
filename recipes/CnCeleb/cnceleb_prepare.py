@@ -323,6 +323,8 @@ def _get_utt_split_lists(
                     # audio_files_list.append(f)
 
             print('There are %d spks in train set!' % (len(audio_files_dict)))
+            train_spk = set()
+            dev_spk = set()
             for spk_id in audio_files_dict:
                 spk_id_utts = audio_files_dict[spk_id]
                 random.shuffle(spk_id_utts)
@@ -330,10 +332,13 @@ def _get_utt_split_lists(
                 split = min(int(0.01 * split_ratio[0] * len(spk_id_utts)), 1)
                 for utts in spk_id_utts[:split]:
                     train_snts.append(utts)
+                    train_spk.add(spk_id)
 
                 for utts in spk_id_utts[split:]:
                     dev_snts.append(utts)
-
+                    dev_spk.add(spk_id)
+            print(len(train_spk))
+            print(len(dev_spk))
             # split = int(0.01 * split_ratio[0] * len(audio_files_list))
             # train_snts = audio_files_list[:split]
             # dev_snts = audio_files_list[split:]
