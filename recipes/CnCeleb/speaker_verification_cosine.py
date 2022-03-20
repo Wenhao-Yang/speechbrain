@@ -361,6 +361,9 @@ def compute_eer(positive_scores, negative_scores, fast=False):
 
 
     # Finding the threshold for EER
+    FAR = torch.tensor(FAR)
+    FRR = torch.tensor(FRR)
+
     min_index = (FAR - FRR).abs().argmin()
 
     # It is possible that eer != fpr != fnr. We return (FAR  + FRR) / 2 as EER.
