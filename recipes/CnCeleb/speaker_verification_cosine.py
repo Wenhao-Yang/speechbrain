@@ -321,22 +321,44 @@ def compute_eer(positive_scores, negative_scores, fast=False):
             thresholds = thresholds_steps
 
     # Computing False Rejection Rate (miss detection)
-    positive_scores = torch.cat(
-        len(thresholds) * [positive_scores.unsqueeze(0)]
-    )
-    pos_scores_threshold = positive_scores.transpose(0, 1) <= thresholds
-    FRR = (pos_scores_threshold.sum(0)).float() / positive_scores.shape[1]
-    del positive_scores
-    del pos_scores_threshold
+    FRR = []
+    positive_scores = torch.sort(positive_scores).values
+    for t in thresholds:
+        if t > positive_scores[-1]:
+            FRR.append(1)
+        else:
+            for i, s in enumerate(positive_scores):
+                if s > t:
+                    FRR.append((i+1)/len(positive_scores))
 
-    # Computing False Acceptance Rate (false alarm)
-    negative_scores = torch.cat(
-        len(thresholds) * [negative_scores.unsqueeze(0)]
-    )
-    neg_scores_threshold = negative_scores.transpose(0, 1) > thresholds
-    FAR = (neg_scores_threshold.sum(0)).float() / negative_scores.shape[1]
-    del negative_scores
-    del neg_scores_threshold
+    # positive_scores = torch.cat(
+    #     len(thresholds) * [positive_scores.unsqueeze(0)]
+    # )
+    # pos_scores_threshold = positive_scores.transpose(0, 1) <= thresholds
+    # FRR = (pos_scores_threshold.sum(0)).float() / positive_scores.shape[1]
+    # del positive_scores
+    # del pos_scores_threshold
+    #
+    # # Computing False Acceptance Rate (false alarm)
+    # negative_scores = torch.cat(
+    #     len(thresholds) * [negative_scores.unsqueeze(0)]
+    # )
+    # neg_scores_threshold = negative_scores.transpose(0, 1) > thresholds
+    # FAR = (neg_scores_threshold.sum(0)).float() / negative_scores.shape[1]
+    # del negative_scores
+    # del neg_scores_threshold
+    FAR = []
+    negative_scores = torch.sort(negative_scores).values
+    for t in thresholds:
+
+        if t < negative_scores[0]:
+            FAR.append(1)
+        else:
+            for i in range(len(negative_scores)):
+                s = negative_scores[len(negative_scores)-1-i]
+                if s < t:
+                    FAR.append((i+1) / len(negative_scores))
+
 
     # Finding the threshold for EER
     min_index = (FAR - FRR).abs().argmin()
