@@ -323,7 +323,18 @@ def compute_eer(positive_scores, negative_scores, fast=False):
     # Computing False Rejection Rate (miss detection)
     FRR = []
     positive_scores = torch.sort(positive_scores).values
-    for t in thresholds:
+    FAR = []
+    negative_scores = torch.sort(negative_scores).values
+
+    for t in tqdm(thresholds, ncols=100):
+        if t < negative_scores[0]:
+            FAR.append(1)
+        else:
+            for i in range(len(negative_scores)):
+                s = negative_scores[len(negative_scores)-1-i]
+                if s < t:
+                    FAR.append((i+1) / len(negative_scores))
+
         if t > positive_scores[-1]:
             FRR.append(1)
         else:
@@ -347,18 +358,6 @@ def compute_eer(positive_scores, negative_scores, fast=False):
     # FAR = (neg_scores_threshold.sum(0)).float() / negative_scores.shape[1]
     # del negative_scores
     # del neg_scores_threshold
-    FAR = []
-    negative_scores = torch.sort(negative_scores).values
-    for t in thresholds:
-
-        if t < negative_scores[0]:
-            FAR.append(1)
-        else:
-            for i in range(len(negative_scores)):
-                s = negative_scores[len(negative_scores)-1-i]
-                if s < t:
-                    FAR.append((i+1) / len(negative_scores))
-
 
     # Finding the threshold for EER
     FAR = torch.tensor(FAR)
