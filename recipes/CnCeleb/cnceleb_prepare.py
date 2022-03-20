@@ -283,7 +283,7 @@ def _get_utt_split_lists(
 
         # test_spks = [snt.split("/")[0] for snt in test_lst]
         test_spks = set([snt.split("-")[0] for snt in test_lst])
-
+        print(test_spks.pop())
         print('There are %d spks in test set!' % (len(test_spks)))
 
         path = os.path.join(data_folder, "data", "**", "*.flac")
