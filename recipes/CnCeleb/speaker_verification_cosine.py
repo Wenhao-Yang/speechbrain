@@ -12,6 +12,7 @@ Authors
     * Mirco Ravanelli 2020
 """
 import os
+import pdb
 import sys
 import torch
 import logging
@@ -87,6 +88,7 @@ def get_verification_scores(veri_test):
     similarity = torch.nn.CosineSimilarity(dim=-1, eps=1e-6)
 
     # creating cohort for score normalization
+    pdb.set_trace()
     if "score_norm" in params:
         train_cohort = torch.stack(list(train_dict.values()))
 
