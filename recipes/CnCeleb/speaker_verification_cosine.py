@@ -327,14 +327,18 @@ def compute_eer(positive_scores, negative_scores, fast=False):
     negative_scores = torch.sort(negative_scores).values
 
     # pdb.set_trace()
+    neg_idx = 0
+    pos_idx = 0
     for t in tqdm(thresholds, ncols=100):
+
         if t < negative_scores[0]:
             FAR.append(1)
         else:
-            for i in range(len(negative_scores)):
+            for i in range(neg_idx, len(negative_scores)):
                 s = negative_scores[len(negative_scores)-1-i]
                 if s < t:
                     FAR.append((i+1) / len(negative_scores))
+                    neg_idx = i
 
         if t > positive_scores[-1]:
             FRR.append(1)
@@ -342,6 +346,7 @@ def compute_eer(positive_scores, negative_scores, fast=False):
             for i, s in enumerate(positive_scores):
                 if s > t:
                     FRR.append((i+1)/len(positive_scores))
+                    pos_idx = i
 
     # positive_scores = torch.cat(
     #     len(thresholds) * [positive_scores.unsqueeze(0)]
