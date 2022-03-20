@@ -83,6 +83,27 @@ def get_verification_scores(veri_test, fast=False):
     negative_scores = []
 
     save_file = os.path.join(params["output_folder"], "scores.txt")
+    if os.path.isfile(save_file):
+        with open(save_file, "r") as f:
+            for l in f.readlines():
+                enrol_id, test_id, lab_pair, score = l.split()
+                lab_pair = int(lab_pair)
+                score = float(score)
+
+                if lab_pair == 1:
+                    positive_scores.append(score)
+                else:
+                    negative_scores.append(score)
+
+                scores.append(score)
+
+        if len(scores) == len(veri_test):
+            return positive_scores, negative_scores
+        else:
+            positive_scores = []
+            negative_scores = []
+            scores = []
+
     s_file = open(save_file, "w")
 
     # Cosine similarity initialization
@@ -101,7 +122,7 @@ def get_verification_scores(veri_test, fast=False):
     enroll_cohort = {}
     test_cohort = {}
 
-    for i, line in tqdm(enumerate(veri_test), ncols=100):
+    for i, line in enumerate(veri_test):
         enrol_id = line.split(" ")[0].rstrip().split(".")[0].strip()
         if enrol_id not in enroll_cohort:
             enrol = enrol_dict[enrol_id]
@@ -357,7 +378,7 @@ if __name__ == "__main__":
                 pickle.dump(train_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     # Compute the EER
-    logger.info("Computing EER..")
+    logger.info("Computing Scores ..")
     # Reading standard verification split
     with open(veri_file_path) as f:
         veri_test = [line.rstrip() for line in f]
@@ -365,7 +386,8 @@ if __name__ == "__main__":
     positive_scores, negative_scores = get_verification_scores(veri_test) #, fast=params['fast_score'])
     del enrol_dict, test_dict
 
-    eer, th = EER(torch.tensor(positive_scores), torch.tensor(negative_scores), fast=params['fast_score'])
+    logger.info("Computing EER..")
+    eer, th = EER(torch.tensor(positive_scores), torch.tensor(negative_scores))#, fast=params['fast_score'])
     logger.info("EER(%%)=%f", eer * 100)
 
     min_dcf, th = minDCF(
