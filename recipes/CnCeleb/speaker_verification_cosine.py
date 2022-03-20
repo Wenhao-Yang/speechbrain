@@ -317,7 +317,7 @@ def compute_eer(positive_scores, negative_scores, fast=False):
 
     if fast:
         thresholds_steps = torch.arange(thresholds.min(), thresholds.max(), 0.00001)
-        if len(thresholds_steps) < thresholds:
+        if len(thresholds_steps) < len(thresholds):
             thresholds = thresholds_steps
 
     # Computing False Rejection Rate (miss detection)
