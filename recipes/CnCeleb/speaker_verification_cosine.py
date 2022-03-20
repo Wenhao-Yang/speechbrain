@@ -89,7 +89,7 @@ def get_verification_scores(veri_test, fast=False):
     similarity = torch.nn.CosineSimilarity(dim=-1, eps=1e-6)
 
     # creating cohort for score normalization
-    pdb.set_trace()
+    # pdb.set_trace()
     if "score_norm" in params:
         train_cohort = list(train_dict.values())
         if fast:
@@ -97,6 +97,51 @@ def get_verification_scores(veri_test, fast=False):
             train_cohort = train_cohort[:50000]
 
         train_cohort = torch.stack(train_cohort)
+
+    enroll_cohort = {}
+    test_cohort = {}
+
+    for i, line in tqdm(enumerate(veri_test), ncols=100):
+        enrol_id = line.split(" ")[0].rstrip().split(".")[0].strip()
+        if enrol_id not in enroll_cohort:
+            enrol = enrol_dict[enrol_id]
+
+            enrol_rep = enrol.repeat(train_cohort.shape[0], 1, 1)
+            score_e_c = similarity(enrol_rep, train_cohort)
+
+            if "cohort_size" in params:
+                score_e_c = torch.topk(
+                    score_e_c, k=params["cohort_size"], dim=0
+                )[0]
+
+            mean_e_c = torch.mean(score_e_c, dim=0)
+            std_e_c = torch.std(score_e_c, dim=0)
+
+            enroll_cohort[enrol_id] = {
+                'mean_e_c': mean_e_c,
+                'std_e_c':  std_e_c,
+            }
+
+        test_id = line.split(" ")[1].rstrip().split(".")[0].strip().split("/")[1]
+        if test_id not in test_cohort:
+            test = test_dict[test_id]
+
+            test_rep = test.repeat(train_cohort.shape[0], 1, 1)
+            score_t_c = similarity(test_rep, train_cohort)
+
+            if "cohort_size" in params:
+                score_t_c = torch.topk(
+                    score_t_c, k=params["cohort_size"], dim=0
+                )[0]
+
+            mean_t_c = torch.mean(score_t_c, dim=0)
+            std_t_c = torch.std(score_t_c, dim=0)
+
+            test_cohort[test_id] = {
+                'mean_t_c': mean_t_c,
+                'std_t_c': std_t_c,
+            }
+
 
     for i, line in tqdm(enumerate(veri_test), ncols=100):
 
@@ -110,28 +155,28 @@ def get_verification_scores(veri_test, fast=False):
 
         if "score_norm" in params:
             # Getting norm stats for enrol impostors
-            enrol_rep = enrol.repeat(train_cohort.shape[0], 1, 1)
-            score_e_c = similarity(enrol_rep, train_cohort)
+            # enrol_rep = enrol.repeat(train_cohort.shape[0], 1, 1)
+            # score_e_c = similarity(enrol_rep, train_cohort)
+            #
+            # if "cohort_size" in params:
+            #     score_e_c = torch.topk(
+            #         score_e_c, k=params["cohort_size"], dim=0
+            #     )[0]
 
-            if "cohort_size" in params:
-                score_e_c = torch.topk(
-                    score_e_c, k=params["cohort_size"], dim=0
-                )[0]
-
-            mean_e_c = torch.mean(score_e_c, dim=0)
-            std_e_c = torch.std(score_e_c, dim=0)
+            mean_e_c = enroll_cohort[enrol_id]['mean_e_c']
+            std_e_c = enroll_cohort[enrol_id]['std_e_c']
 
             # Getting norm stats for test impostors
-            test_rep = test.repeat(train_cohort.shape[0], 1, 1)
-            score_t_c = similarity(test_rep, train_cohort)
+            # test_rep = test.repeat(train_cohort.shape[0], 1, 1)
+            # score_t_c = similarity(test_rep, train_cohort)
+            #
+            # if "cohort_size" in params:
+            #     score_t_c = torch.topk(
+            #         score_t_c, k=params["cohort_size"], dim=0
+            #     )[0]
 
-            if "cohort_size" in params:
-                score_t_c = torch.topk(
-                    score_t_c, k=params["cohort_size"], dim=0
-                )[0]
-
-            mean_t_c = torch.mean(score_t_c, dim=0)
-            std_t_c = torch.std(score_t_c, dim=0)
+            mean_t_c = test_cohort[test_id]['mean_t_c']
+            std_t_c = test_cohort[test_id]['std_t_c']
 
         # Compute the score for the given sentence
         score = similarity(enrol, test)[0]
@@ -317,7 +362,7 @@ if __name__ == "__main__":
     with open(veri_file_path) as f:
         veri_test = [line.rstrip() for line in f]
 
-    positive_scores, negative_scores = get_verification_scores(veri_test, fast=params['fast_score'])
+    positive_scores, negative_scores = get_verification_scores(veri_test) #, fast=params['fast_score'])
     del enrol_dict, test_dict
 
     eer, th = EER(torch.tensor(positive_scores), torch.tensor(negative_scores), fast=params['fast_score'])
