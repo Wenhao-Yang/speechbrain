@@ -331,7 +331,7 @@ def compute_eer(positive_scores, negative_scores, fast=False):
     pos_idx = 0
     for t in tqdm(thresholds, ncols=100):
 
-        if t < negative_scores[0]:
+        if t <= negative_scores[0]:
             FAR.append(1)
         else:
             for i in range(neg_idx, len(negative_scores)):
@@ -341,7 +341,7 @@ def compute_eer(positive_scores, negative_scores, fast=False):
                     neg_idx = i
                     break
 
-        if t > positive_scores[-1]:
+        if t >= positive_scores[-1]:
             FRR.append(1)
         else:
             for i in range(pos_idx, len(positive_scores)):
@@ -371,6 +371,7 @@ def compute_eer(positive_scores, negative_scores, fast=False):
     # Finding the threshold for EER
     FAR = torch.tensor(FAR)
     FRR = torch.tensor(FRR)
+    pdb.set_trace()
 
     min_index = (FAR - FRR).abs().argmin()
 
