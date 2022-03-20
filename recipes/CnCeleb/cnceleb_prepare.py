@@ -281,9 +281,9 @@ def _get_utt_split_lists(
         test_lst = set(sorted(test_lst))
         print('There are %d utterances in test trials!' % (len(test_lst)))
 
-        # test_spks = [snt.split("/")[0] for snt in test_lst]
-        test_spks = set([snt.split("-")[0] for snt in test_lst])
-        print(test_spks.pop())
+        test_spks = set([snt.split("/")[1].split('-')[0] for snt in test_lst])
+        # test_spks = set([snt.split("-")[0] for snt in test_lst])
+        # print(test_spks.pop())
         print('There are %d spks in test set!' % (len(test_spks)))
 
         path = os.path.join(data_folder, "data", "**", "*.flac")
