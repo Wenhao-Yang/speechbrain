@@ -270,7 +270,7 @@ if __name__ == "__main__":
     enroll_dict_pickle = os.path.join(params["save_folder"], 'xvectors', 'enroll.pickle')
     test_dict_pickle = os.path.join(params["save_folder"], 'xvectors', 'test.pickle')
     train_dict_pickle = os.path.join(params["save_folder"], 'xvectors', 'train.pickle')
-    if not os.path.exists(os.path.join(params["save_folder"], 'xvectors'):
+    if not os.path.exists(os.path.join(params["save_folder"], 'xvectors')):
         os.makedirs(os.path.join(params["save_folder"], 'xvectors'))
 
     if os.path.exists(enroll_dict_pickle) and os.path.exists(test_dict_pickle):
