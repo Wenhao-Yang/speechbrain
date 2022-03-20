@@ -337,6 +337,10 @@ def _get_utt_split_lists(
                 for utts in spk_id_utts[split:]:
                     dev_snts.append(utts)
                     dev_spk.add(spk_id)
+
+                if len(dev_spk)>len(train_spk):
+                    print(split, spk_id)
+
             print(len(train_spk))
             print(len(dev_spk))
             # split = int(0.01 * split_ratio[0] * len(audio_files_list))
