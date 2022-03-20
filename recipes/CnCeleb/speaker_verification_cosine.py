@@ -25,6 +25,7 @@ from speechbrain.utils.metric_stats import EER, minDCF
 from speechbrain.utils.data_utils import download_file
 from speechbrain.utils.distributed import run_on_main
 import pickle
+import numpy as np
 
 # Compute embeddings from the waveforms
 def compute_embedding(wavs, wav_lens):
@@ -380,6 +381,49 @@ def compute_eer(positive_scores, negative_scores, fast=False):
 
     return float(EER), float(thresholds[min_index])
 
+def evaluate_kaldi_eer(target, non_target, cos=True, re_thre=False):
+    """
+    The distance score should be larger when two samples are more similar.
+    :param distances:
+    :param labels:
+    :param cos:
+    :return:
+    """
+    # split the target and non-target distance array
+    # target = []
+    # non_target = []
+    # new_distances = []
+
+    # new_distances = np.array(new_distances).astype(np.float)
+
+    target = np.sort(target).astype(np.float)
+    non_target = np.sort(non_target).astype(np.float)
+
+    target_size = target.size
+    nontarget_size = non_target.size
+    # pdb.set_trace()
+    target_position = 0
+    steps = max(1, int(target_size / 1e4))
+    while target_position + steps < target_size:
+        # for target_position in range(target_size):
+        nontarget_n = nontarget_size * target_position * 1.0 / target_size
+        nontarget_position = int(nontarget_size - 1 - nontarget_n)
+
+        if (nontarget_position < 0):
+            nontarget_position = 0
+        # The exceptions from non targets are samples where cosine score is > the target score
+        # if (non_target[nontarget_position] <= target[target_position]):
+        #     break
+        if (non_target[nontarget_position] < target[target_position]):
+            # print('target[{}]={} is < non_target[{}]={}.'.format(target_position, target[target_position], nontarget_position, non_target[nontarget_position]))
+            break
+        target_position += steps
+
+    eer_threshold = target[target_position]
+    eer = target_position * 1.0 / target_size
+
+    return eer, eer_threshold
+
 
 if __name__ == "__main__":
 
@@ -482,7 +526,7 @@ if __name__ == "__main__":
     del enrol_dict, test_dict
 
     logger.info("Computing EER..")
-    eer, th = compute_eer(torch.tensor(positive_scores), torch.tensor(negative_scores), fast=params['fast_score'])
+    eer, th = evaluate_kaldi_eer(torch.tensor(positive_scores), torch.tensor(negative_scores), fast=params['fast_score'])
     logger.info("EER(%%)=%f", eer * 100)
 
     min_dcf, th = minDCF(
