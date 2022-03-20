@@ -283,7 +283,8 @@ def _get_utt_split_lists(
 
         # test_spks = [snt.split("/")[0] for snt in test_lst]
         test_spks = set([snt.split("-")[0] for snt in test_lst])
-        print('There are %d spks in test trials!' % (len(test_spks)))
+
+        print('There are %d spks in test set!' % (len(test_spks)))
 
         path = os.path.join(data_folder, "data", "**", "*.flac")
         if split_speaker:
@@ -320,6 +321,8 @@ def _get_utt_split_lists(
                     audio_files_dict.setdefault(spk_id, []).append(f)
 
                     # audio_files_list.append(f)
+
+            print('There are %d spks in train set!' % (len(audio_files_dict)))
             for spk_id in audio_files_dict:
                 spk_id_utts = audio_files_dict[spk_id]
                 random.shuffle(spk_id_utts)
