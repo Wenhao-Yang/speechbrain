@@ -343,7 +343,7 @@ def compute_eer(positive_scores, negative_scores, fast=False):
         if t > positive_scores[-1]:
             FRR.append(1)
         else:
-            for i, s in range(pos_idx, len(positive_scores)):
+            for i in range(pos_idx, len(positive_scores)):
                 s = positive_scores[i]
                 if s > t:
                     FRR.append((i+1)/len(positive_scores))
