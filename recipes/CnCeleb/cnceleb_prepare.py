@@ -578,7 +578,11 @@ def prepare_csv_enrol_test(data_folders, save_folder, verification_pairs_file):
         logger.info("preparing enrol csv")
         enrol_csv = []
         for id in enrol_ids: # id00800-enroll
-            wav = data_folder + "/eval/enroll/" + id + ".flac"
+            if os.path.exists(data_folder + "/eval/enroll/" + id + ".flac"):
+                wav = data_folder + "/eval/enroll/" + id + ".flac"
+            else:
+                assert os.path.exists(data_folder + "/eval/enroll/" + id + ".wav")
+                wav = data_folder + "/eval/enroll/" + id + ".wav"
 
             # Reading the signal (to retrieve duration in seconds)
             signal, fs = torchaudio.load(wav)
@@ -607,7 +611,11 @@ def prepare_csv_enrol_test(data_folders, save_folder, verification_pairs_file):
         logger.info("preparing test csv")
         test_csv = []
         for id in test_ids: # id00800-singing-01-005
-            wav = data_folder + "/eval/test/" + id + ".flac"
+            if os.path.exists(data_folder + "/eval/test/" + id + ".flac"):
+                wav = data_folder + "/eval/test/" + id + ".flac"
+            else:
+                assert os.path.exists(data_folder + "/eval/test/" + id + ".wav")
+                wav = data_folder + "/eval/test/" + id + ".wav"
 
             # Reading the signal (to retrieve duration in seconds)
             signal, fs = torchaudio.load(wav)
