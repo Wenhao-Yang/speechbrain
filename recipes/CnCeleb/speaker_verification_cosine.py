@@ -316,7 +316,7 @@ def compute_eer(positive_scores, negative_scores, fast=False):
     thresholds, _ = torch.sort(torch.cat([thresholds, interm_thresholds]))
 
     if fast:
-        thresholds_steps = torch.arange(thresholds.min(), thresholds.max(), (thresholds.max()-thresholds.min()/100000))
+        thresholds_steps = torch.arange(thresholds.min(), thresholds.max(), (thresholds.max()-thresholds.min())/100000)
         if len(thresholds_steps) < len(thresholds):
             thresholds = thresholds_steps
 
