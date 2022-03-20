@@ -339,6 +339,7 @@ def compute_eer(positive_scores, negative_scores, fast=False):
                 if s < t:
                     FAR.append((i+1) / len(negative_scores))
                     neg_idx = i
+                    break
 
         if t > positive_scores[-1]:
             FRR.append(1)
@@ -348,6 +349,7 @@ def compute_eer(positive_scores, negative_scores, fast=False):
                 if s > t:
                     FRR.append((i+1)/len(positive_scores))
                     pos_idx = i
+                    break
 
     # positive_scores = torch.cat(
     #     len(thresholds) * [positive_scores.unsqueeze(0)]
