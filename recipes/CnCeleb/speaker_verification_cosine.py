@@ -90,7 +90,7 @@ def get_verification_scores(veri_test):
     if "score_norm" in params:
         train_cohort = torch.stack(list(train_dict.values()))
 
-    for i, line in enumerate(veri_test):
+    for i, line in tqdm(enumerate(veri_test), ncols=100):
 
         # Reading verification file (enrol_file test_file label)
         lab_pair = int(line.split(" ")[2].rstrip().split(".")[0].strip())

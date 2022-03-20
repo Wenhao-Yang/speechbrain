@@ -383,7 +383,7 @@ class BinaryMetricStats(MetricStats):
             return self.summary
 
 
-def EER(positive_scores, negative_scores):
+def EER(positive_scores, negative_scores, fast=False):
     """Computes the EER (and its threshold).
 
     Arguments
@@ -409,6 +409,9 @@ def EER(positive_scores, negative_scores):
     # Adding intermediate thresholds
     interm_thresholds = (thresholds[0:-1] + thresholds[1:]) / 2
     thresholds, _ = torch.sort(torch.cat([thresholds, interm_thresholds]))
+
+    if fast:
+        thresholds = torch.arange(thresholds.min(), thresholds.max(), 0.00001)
 
     # Computing False Rejection Rate (miss detection)
     positive_scores = torch.cat(
