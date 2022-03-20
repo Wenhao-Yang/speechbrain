@@ -305,7 +305,7 @@ def _get_utt_split_lists(
         else:
             # avoid test speakers for train and dev splits
             audio_files_list = []
-            pbar = tqdm(glob.glob(path, recursive=True))
+            pbar = tqdm(glob.glob(path, recursive=True), ncols=100)
             for f in pbar:
                 try:
                     spk_id = f.split("/data/")[1].split("/")[0]
