@@ -326,7 +326,7 @@ def compute_eer(positive_scores, negative_scores, fast=False):
     FAR = []
     negative_scores = torch.sort(negative_scores).values
 
-    pdb.set_trace()
+    # pdb.set_trace()
     for t in tqdm(thresholds, ncols=100):
         if t < negative_scores[0]:
             FAR.append(1)
