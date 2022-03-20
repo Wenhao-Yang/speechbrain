@@ -305,6 +305,10 @@ def _get_utt_split_lists(
         else:
             # avoid test speakers for train and dev splits
             audio_files_list = []
+            audio_files_dict = {}
+            train_snts = []
+            dev_snts = []
+
             pbar = tqdm(glob.glob(path, recursive=True), ncols=100)
             for f in pbar:
                 try:
@@ -313,15 +317,28 @@ def _get_utt_split_lists(
                     logger.info(f"Malformed path: {f}")
                     continue
                 if spk_id not in test_spks:
-                    audio_files_list.append(f)
+                    audio_files_dict.setdefault(spk_id, []).append(f)
 
-            random.shuffle(audio_files_list)
-            split = int(0.01 * split_ratio[0] * len(audio_files_list))
-            train_snts = audio_files_list[:split]
-            dev_snts = audio_files_list[split:]
+                    # audio_files_list.append(f)
+            for spk_id in audio_files_dict:
+                spk_id_utts = audio_files_dict[spk_id]
+                random.shuffle(spk_id_utts)
+
+                split = int(0.01 * split_ratio[0] * len(spk_id_utts))
+                for utts in spk_id_utts[:split]:
+                    train_snts.append(utts)
+
+                for utts in spk_id_utts[split:]:
+                    dev_snts.append(utts)
+
+            # split = int(0.01 * split_ratio[0] * len(audio_files_list))
+            # train_snts = audio_files_list[:split]
+            # dev_snts = audio_files_list[split:]
 
             train_lst.extend(train_snts)
             dev_lst.extend(dev_snts)
+
+        print('Split %d utterances for training and %d utterances for dev.' % (len(train_lst), len(dev_lst)))
 
     return train_lst, dev_lst
 
