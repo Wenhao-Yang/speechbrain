@@ -372,6 +372,7 @@ def compute_eer(positive_scores, negative_scores, fast=False):
 
 
 if __name__ == "__main__":
+
     # Logger setup
     logger = logging.getLogger(__name__)
     current_dir = os.path.dirname(os.path.abspath(__file__))
