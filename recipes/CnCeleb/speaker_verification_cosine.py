@@ -312,7 +312,7 @@ if __name__ == "__main__":
     positive_scores, negative_scores = get_verification_scores(veri_test)
     del enrol_dict, test_dict
 
-    eer, th = EER(torch.tensor(positive_scores), torch.tensor(negative_scores))
+    eer, th = EER(torch.tensor(positive_scores), torch.tensor(negative_scores), fast=True)
     logger.info("EER(%%)=%f", eer * 100)
 
     min_dcf, th = minDCF(
