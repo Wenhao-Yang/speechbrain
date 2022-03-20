@@ -98,6 +98,7 @@ def get_verification_scores(veri_test, fast=False):
                 scores.append(score)
 
         if len(scores) == len(veri_test):
+            logger.info("Loading scores from %s ..." % os.path.join(params["output_folder"], "scores.txt"))
             return positive_scores, negative_scores
         else:
             positive_scores = []
