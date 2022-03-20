@@ -339,6 +339,7 @@ def _get_utt_split_lists(
                     dev_spk.add(spk_id)
 
                 if len(dev_spk)>len(train_spk):
+                    pdb.set_trace()
                     print(split, spk_id)
 
             print(len(train_spk))
