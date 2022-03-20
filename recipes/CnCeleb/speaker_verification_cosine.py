@@ -13,6 +13,7 @@ Authors
 """
 import os
 import pdb
+import random
 import sys
 import torch
 import logging
@@ -74,7 +75,7 @@ def compute_embedding_loop(data_loader):
     return embedding_dict
 
 
-def get_verification_scores(veri_test):
+def get_verification_scores(veri_test, fast=False):
     """ Computes positive and negative scores given the verification split.
     """
     scores = []
@@ -90,7 +91,12 @@ def get_verification_scores(veri_test):
     # creating cohort for score normalization
     pdb.set_trace()
     if "score_norm" in params:
-        train_cohort = torch.stack(list(train_dict.values()))
+        train_cohort = list(train_dict.values())
+        if fast:
+            random.shuffle(train_cohort)
+            train_cohort = train_cohort[:50000]
+
+        train_cohort = torch.stack(train_cohort)
 
     for i, line in tqdm(enumerate(veri_test), ncols=100):
 
@@ -311,10 +317,10 @@ if __name__ == "__main__":
     with open(veri_file_path) as f:
         veri_test = [line.rstrip() for line in f]
 
-    positive_scores, negative_scores = get_verification_scores(veri_test)
+    positive_scores, negative_scores = get_verification_scores(veri_test, fast=params['fast_score'])
     del enrol_dict, test_dict
 
-    eer, th = EER(torch.tensor(positive_scores), torch.tensor(negative_scores), fast=True)
+    eer, th = EER(torch.tensor(positive_scores), torch.tensor(negative_scores), fast=params['fast_score'])
     logger.info("EER(%%)=%f", eer * 100)
 
     min_dcf, th = minDCF(

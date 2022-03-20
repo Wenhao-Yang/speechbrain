@@ -22,6 +22,7 @@ device: 'cuda:0'
 # Therefore you cannot use any files in VoxCeleb1 for training if you are using these lists for testing.
 verification_file: /home/yangwenhao/dataset/CN-Celeb/eval/lists/trials.lst
 skip_prep: true
+fast_score: true
 # Here, the pretrained embedding model trained with train_speaker_embeddings.py hparams/train_ecapa_tdnn.yaml
 # is downloaded from the speechbrain HuggingFace repository.
 # However, a local path pointing to a directory containing your checkpoints may also be specified
