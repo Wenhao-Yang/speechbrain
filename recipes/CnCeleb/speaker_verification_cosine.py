@@ -69,6 +69,7 @@ def compute_embedding_loop(data_loader):
             emb = compute_embedding(wavs, lens).unsqueeze(1)
             for i, seg_id in enumerate(seg_ids):
                 embedding_dict[seg_id] = emb[i].detach().clone()
+
     return embedding_dict
 
 
