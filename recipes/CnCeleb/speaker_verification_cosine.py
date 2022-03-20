@@ -526,7 +526,9 @@ if __name__ == "__main__":
     del enrol_dict, test_dict
 
     logger.info("Computing EER..")
-    eer, th = evaluate_kaldi_eer(torch.tensor(positive_scores), torch.tensor(negative_scores), fast=params['fast_score'])
+    # eer, th = evaluate_kaldi_eer(torch.tensor(positive_scores), torch.tensor(negative_scores), fast=params['fast_score'])
+    eer, th = evaluate_kaldi_eer(torch.tensor(positive_scores), torch.tensor(negative_scores)) #, fast=params['fast_score'])
+
     logger.info("EER(%%)=%f", eer * 100)
 
     min_dcf, th = minDCF(
