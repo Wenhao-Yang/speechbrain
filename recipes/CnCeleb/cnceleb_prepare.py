@@ -330,7 +330,7 @@ def _get_utt_split_lists(
                 random.shuffle(spk_id_utts)
 
                 train_split = max(int(0.01 * split_ratio[0] * len(spk_id_utts)), 1)
-                valid_split = max(len(spk_id_utts)-train_split,0)
+                valid_split = max(len(spk_id_utts)-train_split, 0)
 
                 for utts in spk_id_utts[:split]:
                     train_snts.append(utts)
