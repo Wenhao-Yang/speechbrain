@@ -329,13 +329,15 @@ def _get_utt_split_lists(
                 spk_id_utts = audio_files_dict[spk_id]
                 random.shuffle(spk_id_utts)
 
-                split = max(int(0.01 * split_ratio[0] * len(spk_id_utts)), 1)
+                train_split = max(int(0.01 * split_ratio[0] * len(spk_id_utts)), 1)
+                valid_split = max(len(spk_id_utts)-train_split,0)
+
                 for utts in spk_id_utts[:split]:
                     train_snts.append(utts)
                     train_spk.add(spk_id)
 
-                if split > 1:
-                    for utts in spk_id_utts[split:]:
+                if valid_split >= 1:
+                    for utts in spk_id_utts[-split:]:
                         dev_snts.append(utts)
                         dev_spk.add(spk_id)
 
