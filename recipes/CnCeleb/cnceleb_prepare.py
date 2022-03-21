@@ -329,7 +329,7 @@ def _get_utt_split_lists(
                 spk_id_utts = audio_files_dict[spk_id]
                 random.shuffle(spk_id_utts)
 
-                train_split = max(int(0.01 * split_ratio[0] * len(spk_id_utts)), 1)
+                train_split = max(np.ceil(0.01 * split_ratio[0] * len(spk_id_utts)), 1)
                 valid_split = max(len(spk_id_utts)-train_split, 0)
 
                 for utts in spk_id_utts[:train_split]:
@@ -360,12 +360,15 @@ def _get_chunks(seg_dur, audio_id, audio_duration):
     """
     Returns list of chunks
     """
-    num_chunks = int(audio_duration / seg_dur)  # all in milliseconds
+    chunk_lst = []
+    if audio_duration > seg_dur:
+        num_chunks = int(audio_duration / seg_dur)  # all in milliseconds
+        for i in range(num_chunks):
+            chunk_lst.append(audio_id + "_" + str(i * seg_dur) + "_" + str(i * seg_dur + seg_dur))
 
-    chunk_lst = [
-        audio_id + "_" + str(i * seg_dur) + "_" + str(i * seg_dur + seg_dur)
-        for i in range(num_chunks)
-    ]
+        for i in range(num_chunks):
+            start = np.random.randint(0, audio_duration-seg_dur)
+            chunk_lst.append(audio_id + "_" + str(start) + "_" + str(start + seg_dur))
 
     return chunk_lst
 
