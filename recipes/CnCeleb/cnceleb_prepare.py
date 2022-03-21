@@ -341,6 +341,7 @@ def _get_utt_split_lists(
                         dev_snts.append(utts)
                         dev_spk.add(spk_id)
 
+            print('Split %d spks\'utterances for training and %d spks\'utterances for dev.' % (len(train_spk), len(dev_spk)))
             # print(len(train_spk))
             # print(len(dev_spk))
             # split = int(0.01 * split_ratio[0] * len(audio_files_list))
