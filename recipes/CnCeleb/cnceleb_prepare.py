@@ -360,17 +360,18 @@ def _get_chunks(seg_dur, audio_id, audio_duration):
     """
     Returns list of chunks
     """
-    chunk_lst = []
+    chunk_lst = set()
     if audio_duration >= seg_dur:
         num_chunks = int(audio_duration / seg_dur)  # all in milliseconds
         for i in range(num_chunks):
-            chunk_lst.append(audio_id + "_" + str(i * seg_dur) + "_" + str(i * seg_dur + seg_dur))
+            chunk_lst.add(audio_id + "_" + str(i * seg_dur) + "_" + str(i * seg_dur + seg_dur))
 
-        for i in range(num_chunks):
-            start = np.random.randint(0, audio_duration-seg_dur)
-            chunk_lst.append(audio_id + "_" + str(start) + "_" + str(start + seg_dur))
+        if audio_duration > seg_dur:
+            for i in range(num_chunks):
+                start = np.random.randint(0, audio_duration - seg_dur)
+                chunk_lst.add(audio_id + "_" + str(start) + "_" + str(start + seg_dur))
 
-    return chunk_lst
+    return list(chunk_lst)
 
 
 def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th, q_queue):
