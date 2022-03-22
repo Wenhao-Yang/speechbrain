@@ -223,6 +223,7 @@ if __name__ == "__main__":
             "splits": ["train", "dev"],
             "split_ratio": [95, 5],
             "seg_dur": hparams["sentence_len"],
+            "skip_prep": hparams["skip_prep"]
         },
     )
 

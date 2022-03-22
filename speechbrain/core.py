@@ -1025,7 +1025,7 @@ class Brain:
             with tqdm(
                     train_set,
                     initial=self.step,
-                    ncols=500,
+                    ncols=200,
                     dynamic_ncols=False,
                     disable=not enable,
             ) as t:
