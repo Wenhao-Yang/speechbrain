@@ -38,7 +38,7 @@ batch_size: 36
 lr: 0.001
 base_lr: 0.00000001
 max_lr: !ref <lr>
-step_size: 27200
+step_size: 27000
 sample_rate: 16000
 sentence_len: 3.0 # seconds
 shuffle: True
@@ -121,10 +121,9 @@ add_rev_noise: !new:speechbrain.lobes.augment.EnvCorrupt
 # If concat_augment = False, the augmentation techniques are applied
 # in sequence. If concat_augment = True, all the augmented signals
 # # are concatenated in a single big batch.
-
+    #
 augment_pipeline: [
     !ref <augment_wavedrop>,
-    !ref <augment_speed>,
     !ref <add_rev>,
     !ref <add_noise>,
     !ref <add_rev_noise>
