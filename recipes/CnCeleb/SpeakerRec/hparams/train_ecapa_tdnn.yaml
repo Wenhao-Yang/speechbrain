@@ -30,6 +30,7 @@ rir_folder: /home/yangwenhao/dataset # Change it if needed
 verification_file: /home/yangwenhao/dataset/CN-Celeb/eval/lists/trials.lst
 
 skip_prep: False
+split_ratio: [ 95, 5 ]
 ckpt_interval_minutes: 15 # save checkpoint every N min
 
 # Training parameters
