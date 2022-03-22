@@ -1023,10 +1023,11 @@ class Brain:
             # Only show progressbar if requested and main_process
             enable = progressbar and sb.utils.distributed.if_main_process()
             with tqdm(
-                train_set,
-                initial=self.step,
-                dynamic_ncols=True,
-                disable=not enable,
+                    train_set,
+                    initial=self.step,
+                    ncols=300,
+                    dynamic_ncols=False,
+                    disable=not enable,
             ) as t:
                 for batch in t:
                     self.step += 1
@@ -1061,7 +1062,7 @@ class Brain:
                 avg_valid_loss = 0.0
                 with torch.no_grad():
                     for batch in tqdm(
-                        valid_set, dynamic_ncols=True, disable=not enable
+                            valid_set, ncols=300, dynamic_ncols=False, disable=not enable
                     ):
                         self.step += 1
                         loss = self.evaluate_batch(batch, stage=Stage.VALID)
