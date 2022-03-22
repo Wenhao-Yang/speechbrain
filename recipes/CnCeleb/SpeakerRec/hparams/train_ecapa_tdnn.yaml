@@ -57,7 +57,7 @@ out_n_neurons: 797 #797 for c1 1996 for c2, 2793 for c1+c2
 dataloader_options:
     batch_size: !ref <batch_size>
     shuffle: !ref <shuffle>
-    num_workers: 4
+    num_workers: 2
 
 # Functions
 compute_features: !new:speechbrain.lobes.features.Fbank
@@ -124,11 +124,19 @@ add_rev_noise: !new:speechbrain.lobes.augment.EnvCorrupt
 # # are concatenated in a single big batch.
 #     !ref <augment_speed>,
 #     !ref <augment_wavedrop>,
+#augment_pipeline: [
+#    !ref <add_rev>,
+#    !ref <add_noise>,
+#    !ref <add_rev_noise>
+#]
 augment_pipeline: [
+    !ref <augment_wavedrop>,
+    !ref <augment_speed>,
     !ref <add_rev>,
     !ref <add_noise>,
     !ref <add_rev_noise>
 ]
+
 concat_augment: True
 
 mean_var_norm: !new:speechbrain.processing.features.InputNormalization
