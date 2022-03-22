@@ -29,7 +29,7 @@ rir_folder: /home/yangwenhao/dataset # Change it if needed
 
 verification_file: /home/yangwenhao/dataset/CN-Celeb/eval/lists/trials.lst
 
-skip_prep: true
+skip_prep: False
 split_ratio: [ 95, 5 ]
 ckpt_interval_minutes: 15 # save checkpoint every N min
 
@@ -39,10 +39,10 @@ batch_size: 32
 lr: 0.001
 base_lr: 0.00000001
 max_lr: !ref <lr>
-step_size: 26000
+step_size: 27000
 sample_rate: 16000
 sentence_len: 3.0 # seconds
-shuffle: False
+shuffle: True
 random_chunk: True
 
 # Feature parameters
@@ -57,7 +57,7 @@ out_n_neurons: 797 #797 for c1 1996 for c2, 2793 for c1+c2
 dataloader_options:
     batch_size: !ref <batch_size>
     shuffle: !ref <shuffle>
-    num_workers: 2
+    num_workers: 4
 
 # Functions
 compute_features: !new:speechbrain.lobes.features.Fbank
@@ -124,19 +124,11 @@ add_rev_noise: !new:speechbrain.lobes.augment.EnvCorrupt
 # # are concatenated in a single big batch.
 #     !ref <augment_speed>,
 #     !ref <augment_wavedrop>,
-#augment_pipeline: [
-#    !ref <add_rev>,
-#    !ref <add_noise>,
-#    !ref <add_rev_noise>
-#]
 augment_pipeline: [
-    !ref <augment_wavedrop>,
-    !ref <augment_speed>,
     !ref <add_rev>,
     !ref <add_noise>,
     !ref <add_rev_noise>
 ]
-
 concat_augment: True
 
 mean_var_norm: !new:speechbrain.processing.features.InputNormalization
