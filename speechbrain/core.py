@@ -1044,7 +1044,7 @@ class Brain:
             with tqdm(
                     train_set,
                     initial=self.step,
-                    ncols=150,
+                    ncols=100,
                     dynamic_ncols=False,
                     disable=not enable,
             ) as t:
@@ -1084,6 +1084,8 @@ class Brain:
             self.avg_train_loss = 0.0
             self.step = 0
 
+            print('')
+
             # Validation stage
             if valid_set is not None:
                 self.on_stage_start(Stage.VALID, epoch)
@@ -1091,7 +1093,7 @@ class Brain:
                 avg_valid_loss = 0.0
                 with torch.no_grad():
                     for batch in tqdm(
-                            valid_set, ncols=150, dynamic_ncols=False, disable=not enable
+                            valid_set, ncols=100, dynamic_ncols=False, disable=not enable
                     ):
                         self.step += 1
                         loss = self.evaluate_batch(batch, stage=Stage.VALID)
