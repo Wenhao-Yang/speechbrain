@@ -6,7 +6,7 @@
 # Basic parameters
 seed: 1986
 __set_seed: !apply:torch.manual_seed [!ref <seed>]
-output_folder: !ref results/xvect_augment/<seed>
+output_folder: !ref results/xvect_augmen_double_epoch30/<seed>
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
@@ -30,7 +30,7 @@ skip_prep: False
 ckpt_interval_minutes: 15 # save checkpoint every N min
 
 # Training parameters
-number_of_epochs: 20
+number_of_epochs: 30
 batch_size: 64
 lr: 0.001
 lr_final: 0.0001
