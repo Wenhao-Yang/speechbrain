@@ -330,16 +330,15 @@ def _get_utt_split_lists(
                 random.shuffle(spk_id_utts)
 
                 train_split = int(max(np.ceil(0.01 * split_ratio[0] * len(spk_id_utts)), 1))
-                valid_split = int(max(len(spk_id_utts)-train_split, 0))
+                # valid_split = int(max(len(spk_id_utts)-train_split, 0))
 
-                for utts in spk_id_utts[:train_split]:
-                    train_snts.append(utts)
+                for i in range(train_split):
+                    train_snts.append(spk_id_utts.pop())
                     train_spk.add(spk_id)
 
-                if valid_split >= 1:
-                    for utts in spk_id_utts[-valid_split:]:
-                        dev_snts.append(utts)
-                        dev_spk.add(spk_id)
+                for utts in spk_id_utts:
+                    dev_snts.append(utts)
+                    dev_spk.add(spk_id)
 
             print('Split %d spks\'utterances for training and %d spks\'utterances for dev.' % (len(train_spk), len(dev_spk)))
             # print(len(train_spk))
