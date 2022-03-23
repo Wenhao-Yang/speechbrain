@@ -4,7 +4,7 @@
 # ################################
 
 # Basic parameters
-seed: 1986
+seed: 1985
 __set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
@@ -45,7 +45,7 @@ shuffle: True
 random_chunk: True
 
 # Feature parameters
-n_mels: 80
+n_mels: 40
 left_frames: 0
 right_frames: 0
 deltas: False
@@ -125,11 +125,13 @@ add_rev_noise: !new:speechbrain.lobes.augment.EnvCorrupt
 # If concat_augment = False, the augmentation techniques are applied
 # in sequence. If concat_augment = True, all the augmented signals
 # are concatenated in a single big batch.
+
+#!ref <augment_wavedrop>,
+#    !ref <augment_speed>,
+#    !ref <add_rev>,
+#    !ref <add_noise>,
+
 augment_pipeline: [
-    !ref <augment_wavedrop>,
-    !ref <augment_speed>,
-    !ref <add_rev>,
-    !ref <add_noise>,
     !ref <add_rev_noise>
 ]
 concat_augment: True
