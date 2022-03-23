@@ -854,6 +854,7 @@ class Brain:
         detached loss
         """
         should_step = self.step % self.grad_accumulation_factor == 0
+        print('norm grad is: ', self.max_grad_norm)
         # Managing automatic mixed precision
         if self.auto_mix_prec:
             self.optimizer.zero_grad()
