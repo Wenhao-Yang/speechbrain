@@ -34,6 +34,6 @@ fi
 
 if [ $stage -le 10 ]; then
 
-  CUDA_VISIBLE_DEVICES=2,4 python -m torch.distributed.launch --nproc_per_node=2 train_speaker_embeddings.py SpeakerRec/hparams/train_x_vectors.yaml --distributed_launch --distributed_backend='nccl'
+  CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 train_speaker_embeddings.py SpeakerRec/hparams/train_x_vectors.yaml --distributed_launch --distributed_backend='nccl'
 
 fi
