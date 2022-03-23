@@ -450,7 +450,8 @@ def _prepare_openrir(folder, reverb_csv, noise_csv, max_noise_len):
     if not os.path.isdir(os.path.join(folder, "RIRS_NOISES")):
         download_file(OPENRIR_URL, filepath, unpack=True)
     else:
-        download_file(OPENRIR_URL, filepath)
+        pass
+        # download_file(OPENRIR_URL, filepath)
 
     # Prepare reverb csv if necessary
     if not os.path.isfile(reverb_csv):
