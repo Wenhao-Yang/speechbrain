@@ -365,10 +365,10 @@ def _get_chunks(seg_dur, audio_id, audio_duration):
     for i in range(num_chunks):
         chunk_lst.add(audio_id + "_" + str(i * seg_dur) + "_" + str(i * seg_dur + seg_dur))
 
-    if audio_duration > seg_dur:
-        for i in range(num_chunks):
-            start = np.random.randint(0, int((audio_duration - seg_dur) * SAMPLERATE)) / SAMPLERATE
-            chunk_lst.add(audio_id + "_" + str(start) + "_" + str(start + seg_dur))
+    # if audio_duration > seg_dur:
+    #     for i in range(num_chunks):
+    #         start = np.random.randint(0, int((audio_duration - seg_dur) * SAMPLERATE)) / SAMPLERATE
+    #         chunk_lst.add(audio_id + "_" + str(start) + "_" + str(start + seg_dur))
 
     return list(chunk_lst)
 
