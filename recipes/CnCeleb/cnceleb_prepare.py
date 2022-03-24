@@ -11,7 +11,7 @@
 """
 """
 
-Data preparation.
+Data preparation from voxceleb.
 
 Download: http://www.robots.ox.ac.uk/~vgg/data/voxceleb/
 """
@@ -44,19 +44,19 @@ ENROL_CSV = "enrol.csv"
 SAMPLERATE = 16000
 
 
-DEV_WAV = "vox1_dev_wav.zip"
-TEST_WAV = "vox1_test_wav.zip"
-META = "meta"
+# DEV_WAV = "vox1_dev_wav.zip"
+# TEST_WAV = "vox1_test_wav.zip"
+# META = "meta"
 
 
 def prepare_cnceleb(
-    data_folder,
-    save_folder,
-    verification_pairs_file,
-    splits=["train", "dev", "test"],
-    split_ratio=[90, 10],
-    seg_dur=3.0,
-    amp_th=5e-04,
+        data_folder,
+        save_folder,
+        verification_pairs_file,
+        splits=["train", "dev", "test"],
+        split_ratio=[90, 10],
+        seg_dur=3.0,
+        amp_th=5e-04,
     source=None,
     split_speaker=False,
     random_segment=False,

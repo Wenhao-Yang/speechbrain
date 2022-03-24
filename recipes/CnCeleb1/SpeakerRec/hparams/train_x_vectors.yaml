@@ -5,7 +5,7 @@
 
 # Basic parameters
 seed: 1988
-__set_seed: !apply:torch.manual_seed [!ref <seed>]
+__set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 
@@ -50,7 +50,7 @@ right_frames: 0
 deltas: False
 
 # Number of speakers
-out_n_neurons: 797 # 7205 #1211 for vox1  # 5994 for vox2, 7205 for vox1+vox2
+out_n_neurons: 797 # #1211 for vox1  # 5994 for vox2, 7205 for vox1+vox2
 
 dataloader_options:
     batch_size: !ref <batch_size>
