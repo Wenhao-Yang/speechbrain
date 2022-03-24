@@ -1086,7 +1086,7 @@ class Brain:
             self.avg_train_loss = 0.0
             self.step = 0
 
-            print('')
+            # print('')
 
             # Validation stage
             if valid_set is not None:
