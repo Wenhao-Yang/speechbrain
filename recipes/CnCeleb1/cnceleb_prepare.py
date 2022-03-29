@@ -625,7 +625,7 @@ def prepare_csv_enrol_test(data_folders, save_folder, verification_pairs_file):
             stop_sample = signal.shape[0]
 
             spk_id = id.split("-")[0]
-            csv_line = [id, audio_duration, wav, start_sample, stop_sample, spk_id, ]
+            csv_line = [id, audio_duration, wav, start_sample, stop_sample, spk_id]
 
             enrol_csv.append(csv_line)
 

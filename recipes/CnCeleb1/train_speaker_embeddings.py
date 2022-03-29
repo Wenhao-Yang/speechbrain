@@ -93,6 +93,7 @@ class SpeakerBrain(sb.core.Brain):
 
         if stage != sb.Stage.TRAIN:
             self.error_metrics.append(uttid, predictions, spkid, lens)
+
         elif stage == sb.Stage.TRAIN:
             self.train_error_metrics.append(uttid, predictions, spkid, lens)
 

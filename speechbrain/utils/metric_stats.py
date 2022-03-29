@@ -78,6 +78,7 @@ class MetricStats:
         *args, **kwargs
             Arguments to pass to the metric function.
         """
+        pdb.set_trace()
         self.ids.extend(ids)
 
         # Batch evaluation
@@ -115,7 +116,7 @@ class MetricStats:
             Returns a float if ``field`` is provided, otherwise
             returns a dictionary containing all computed stats.
         """
-        pdb.set_trace()
+        # pdb.set_trace()
         min_index = torch.argmin(torch.tensor(self.scores))
         max_index = torch.argmax(torch.tensor(self.scores))
         self.summary = {
