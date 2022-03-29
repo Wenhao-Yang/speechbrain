@@ -34,12 +34,12 @@ ckpt_interval_minutes: 15 # save checkpoint every N min
 
 # Training parameters
 number_of_epochs: 30
-batch_size: 32
+batch_size: 64
 lr: 0.001
 base_lr: 0.00000001
 sch_mode: triangular2
 max_lr: !ref <lr>
-step_size: 32365
+step_size: 16182
 sample_rate: 16000
 sentence_len: 3.0 # seconds
 shuffle: True
