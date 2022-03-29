@@ -95,7 +95,8 @@ class SpeakerBrain(sb.core.Brain):
             self.error_metrics.append(uttid, predictions, spkid, lens)
 
         elif stage == sb.Stage.TRAIN:
-            self.train_error_metrics.append(uttid, predictions, spkid, lens)
+            trainids = [id for id in uttid for i in range(self.hparams.augment_pipeline)]
+            self.train_error_metrics.append(trainids, predictions, spkid, lens)
 
         return loss
 
