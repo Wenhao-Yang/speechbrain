@@ -78,7 +78,7 @@ class MetricStats:
         *args, **kwargs
             Arguments to pass to the metric function.
         """
-        pdb.set_trace()
+        # pdb.set_trace()
         self.ids.extend(ids)
 
         # Batch evaluation
