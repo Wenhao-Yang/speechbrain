@@ -5,6 +5,8 @@ Authors:
  * Peter Plantinga 2020
  * Mirco Ravanelli 2020
 """
+import pdb
+
 import torch
 from joblib import Parallel, delayed
 from speechbrain.utils.data_utils import undo_padding
@@ -113,6 +115,7 @@ class MetricStats:
             Returns a float if ``field`` is provided, otherwise
             returns a dictionary containing all computed stats.
         """
+        pdb.set_trace()
         min_index = torch.argmin(torch.tensor(self.scores))
         max_index = torch.argmax(torch.tensor(self.scores))
         self.summary = {
