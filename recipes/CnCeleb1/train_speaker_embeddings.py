@@ -97,7 +97,7 @@ class SpeakerBrain(sb.core.Brain):
         # elif stage == sb.Stage.TRAIN:
         #     trainids = [id for id in uttid for i in range(len(self.hparams.augment_pipeline) + 1)]
         #     self.train_error_metrics.append(trainids, predictions, spkid, lens)
-        print(spkid.squeeze().tolist())
+        # print(spkid.squeeze().tolist())
 
         return loss
 
@@ -152,7 +152,7 @@ def dataio_prep(hparams):
     datasets = [train_data, valid_data]
     label_encoder = sb.dataio.encoder.CategoricalEncoder()
 
-    snt_len_sample = int(hparams["sample_rate"] * hparams["sentence_len"])
+    snt_len_sample = int(hparams["sample_rate"] * hparams["chunk_size"])
 
     # 2. Define audio pipeline:
     @sb.utils.data_pipeline.takes("wav", "start", "stop", "duration")
