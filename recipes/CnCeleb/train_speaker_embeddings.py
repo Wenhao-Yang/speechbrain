@@ -105,8 +105,8 @@ class SpeakerBrain(sb.core.Brain):
         if stage != sb.Stage.TRAIN:
             self.error_metrics = self.hparams.error_stats()
 
+        pdb.set_trace()
         if stage == sb.Stage.TRAIN:
-            pdb.set_trace()
             self.train_error_metrics = self.hparams.train_error_stats()
 
     def on_stage_end(self, stage, stage_loss, epoch=None):
