@@ -91,7 +91,10 @@ class SpeakerBrain(sb.core.Brain):
         if hasattr(self.hparams.lr_annealing, "on_batch_end"):
             self.hparams.lr_annealing.on_batch_end(self.optimizer)
 
-        if stage != sb.Stage.TRAIN:
+        if stage == sb.Stage.TRAIN:
+            self.train_error_metrics.append(uttid, predictions, spkid, lens)
+
+        else:
             self.error_metrics.append(uttid, predictions, spkid, lens)
 
         return loss

@@ -1059,7 +1059,8 @@ class Brain:
                     self.avg_train_loss = self.update_average(
                         loss, self.avg_train_loss
                     )
-                    t.set_postfix(train_loss=self.avg_train_loss)
+                    t.set_postfix(train_loss=self.avg_train_loss,
+                                  train_error=self.train_error_metrics.summarize("average"))
 
                     # Debug mode only runs a few batches
                     if self.debug and self.step == self.debug_batches:
