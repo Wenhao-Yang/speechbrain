@@ -39,7 +39,7 @@ lr: 0.001
 base_lr: 0.00000001
 sch_mode: triangular2
 max_lr: !ref <lr>
-step_size: 16182
+step_size: 8095
 sample_rate: 16000
 sentence_len: 3.0 # seconds
 shuffle: True
