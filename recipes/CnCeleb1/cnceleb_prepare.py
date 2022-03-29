@@ -305,7 +305,11 @@ def _get_utt_split_lists(
         else:
             # avoid test speakers for train and dev splits
             audio_files_list = []
-            pbar = tqdm(glob.glob(path, recursive=True), ncols=60)
+            audio_files_dict = {}
+            train_snts = []
+            dev_snts = []
+
+            pbar = tqdm(glob.glob(path, recursive=True), ncols=100)
             for f in pbar:
                 try:
                     spk_id = f.split("/data/")[1].split("/")[0]
@@ -313,15 +317,40 @@ def _get_utt_split_lists(
                     logger.info(f"Malformed path: {f}")
                     continue
                 if spk_id not in test_spks:
-                    audio_files_list.append(f)
+                    audio_files_dict.setdefault(spk_id, []).append(f)
 
-            random.shuffle(audio_files_list)
-            split = int(0.01 * split_ratio[0] * len(audio_files_list))
-            train_snts = audio_files_list[:split]
-            dev_snts = audio_files_list[split:]
+                    # audio_files_list.append(f)
+
+            print('There are %d spks in train set!' % (len(audio_files_dict)))
+            train_spk = set()
+            dev_spk = set()
+            for spk_id in audio_files_dict:
+                spk_id_utts = audio_files_dict[spk_id]
+                random.shuffle(spk_id_utts)
+
+                train_split = int(max(np.ceil(0.01 * split_ratio[0] * len(spk_id_utts)), 1))
+                # valid_split = int(max(len(spk_id_utts)-train_split, 0))
+
+                for i in range(train_split):
+                    train_snts.append(spk_id_utts.pop())
+                    train_spk.add(spk_id)
+
+                for utts in spk_id_utts:
+                    dev_snts.append(utts)
+                    dev_spk.add(spk_id)
+
+            print('Split %d spks\'utterances for training and %d spks\'utterances for dev.' % (
+                len(train_spk), len(dev_spk)))
+            # print(len(train_spk))
+            # print(len(dev_spk))
+            # split = int(0.01 * split_ratio[0] * len(audio_files_list))
+            # train_snts = audio_files_list[:split]
+            # dev_snts = audio_files_list[split:]
 
             train_lst.extend(train_snts)
             dev_lst.extend(dev_snts)
+
+        print('Split %d utterances for training and %d utterances for dev.' % (len(train_lst), len(dev_lst)))
 
     return train_lst, dev_lst
 
@@ -330,17 +359,17 @@ def _get_chunks(seg_dur, audio_id, audio_duration):
     """
     Returns list of chunks
     """
+    chunk_lst = set()
+    # if audio_duration >= seg_dur:
     num_chunks = int(audio_duration / seg_dur)  # all in milliseconds
+    for i in range(num_chunks):
+        chunk_lst.add(audio_id + "_" + str(i * seg_dur) + "_" + str(i * seg_dur + seg_dur))
 
-    chunk_lst = [
-        audio_id + "_" + str(i * seg_dur) + "_" + str(i * seg_dur + seg_dur)
-        for i in range(num_chunks)
-    ]
     if audio_duration > seg_dur:
         for i in range(num_chunks):
             start = np.random.randint(0, int((audio_duration - seg_dur) * SAMPLERATE)) / SAMPLERATE
-            chunk_lst.append(audio_id + "_" + str(start) + "_" + str(start + seg_dur))
-    chunk_lst = set(chunk_lst)
+            chunk_lst.add(audio_id + "_" + str(start) + "_" + str(start + seg_dur))
+
     return list(chunk_lst)
 
 
@@ -581,8 +610,12 @@ def prepare_csv_enrol_test(data_folders, save_folder, verification_pairs_file):
         # Prepare enrol csv
         logger.info("preparing enrol csv")
         enrol_csv = []
-        for id in enrol_ids: # id00800-enroll
-            wav = data_folder + "/eval/enroll/" + id + ".wav"
+        for id in enrol_ids:  # id00800-enroll
+            if os.path.exists(data_folder + "/eval/enroll/" + id + ".flac"):
+                wav = data_folder + "/eval/enroll/" + id + ".flac"
+            else:
+                assert os.path.exists(data_folder + "/eval/enroll/" + id + ".wav")
+                wav = data_folder + "/eval/enroll/" + id + ".wav"
 
             # Reading the signal (to retrieve duration in seconds)
             signal, fs = torchaudio.load(wav)
@@ -592,7 +625,7 @@ def prepare_csv_enrol_test(data_folders, save_folder, verification_pairs_file):
             stop_sample = signal.shape[0]
 
             spk_id = id.split("-")[0]
-            csv_line = [id, audio_duration, wav, start_sample, stop_sample, spk_id,]
+            csv_line = [id, audio_duration, wav, start_sample, stop_sample, spk_id, ]
 
             enrol_csv.append(csv_line)
 
@@ -610,8 +643,12 @@ def prepare_csv_enrol_test(data_folders, save_folder, verification_pairs_file):
         # Prepare test csv
         logger.info("preparing test csv")
         test_csv = []
-        for id in test_ids: # id00800-singing-01-005
-            wav = data_folder + "/eval/test/" + id + ".wav"
+        for id in test_ids:  # id00800-singing-01-005
+            if os.path.exists(data_folder + "/eval/test/" + id + ".flac"):
+                wav = data_folder + "/eval/test/" + id + ".flac"
+            else:
+                assert os.path.exists(data_folder + "/eval/test/" + id + ".wav")
+                wav = data_folder + "/eval/test/" + id + ".wav"
 
             # Reading the signal (to retrieve duration in seconds)
             signal, fs = torchaudio.load(wav)
