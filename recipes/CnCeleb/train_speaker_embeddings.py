@@ -14,6 +14,8 @@ Author
     * Hwidong Na 2020
     * Nauman Dawalatabad 2020
 """
+import pdb
+
 import os
 import sys
 import random
@@ -93,7 +95,6 @@ class SpeakerBrain(sb.core.Brain):
 
         if stage == sb.Stage.TRAIN:
             self.train_error_metrics.append(uttid, predictions, spkid, lens)
-
         else:
             self.error_metrics.append(uttid, predictions, spkid, lens)
 
@@ -105,6 +106,7 @@ class SpeakerBrain(sb.core.Brain):
             self.error_metrics = self.hparams.error_stats()
 
         if stage == sb.Stage.TRAIN:
+            pdb.set_trace()
             self.train_error_metrics = self.hparams.train_error_stats()
 
     def on_stage_end(self, stage, stage_loss, epoch=None):
