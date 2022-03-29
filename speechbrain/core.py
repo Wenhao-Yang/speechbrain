@@ -1028,7 +1028,6 @@ class Brain:
         # Iterate epochs
         for epoch in epoch_counter:
             # Training stage
-            pdb.set_trace()
             self.on_stage_start(Stage.TRAIN, epoch)
             self.modules.train()
 
