@@ -38,7 +38,7 @@ batch_size: 64
 lr: 0.001
 base_lr: 0.00000001
 max_lr: !ref <lr>
-step_size: 24805
+step_size: 26200
 sample_rate: 16000
 sentence_len: 2.0 # seconds
 shuffle: True
