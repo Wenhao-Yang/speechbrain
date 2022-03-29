@@ -121,10 +121,10 @@ add_rev_noise: !new:speechbrain.lobes.augment.EnvCorrupt
 # If concat_augment = False, the augmentation techniques are applied
 # in sequence. If concat_augment = True, all the augmented signals
 # # are concatenated in a single big batch.
+#!ref <augment_speed>,
 
 augment_pipeline: [
     !ref <augment_wavedrop>,
-    !ref <augment_speed>,
     !ref <add_rev>,
     !ref <add_noise>,
     !ref <add_rev_noise>
