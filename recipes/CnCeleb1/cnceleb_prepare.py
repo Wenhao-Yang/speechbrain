@@ -552,7 +552,8 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
     while not e_queue.empty():
         entry.append(e_queue.get())
 
-    # TODO: random.shuffle(entry)
+    # TODO:
+    random.shuffle(entry)
     csv_output = csv_output + entry
 
     # Writing the csv lines
