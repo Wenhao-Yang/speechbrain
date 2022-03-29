@@ -1061,18 +1061,18 @@ class Brain:
                         loss, self.avg_train_loss
                     )
                     # pdb.set_trace()
-                    t.set_postfix(train_loss=self.avg_train_loss,
-                                  train_error=self.train_error_metrics.summarize("average"))
+                    t.set_postfix(train_loss=self.avg_train_loss)  # ,
+                    # train_error=self.train_error_metrics.summarize("average"))
 
                     # Debug mode only runs a few batches
                     if self.debug and self.step == self.debug_batches:
                         break
 
                     if (
-                        self.checkpointer is not None
-                        and self.ckpt_interval_minutes > 0
-                        and time.time() - last_ckpt_time
-                        >= self.ckpt_interval_minutes * 60.0
+                            self.checkpointer is not None
+                            and self.ckpt_interval_minutes > 0
+                            and time.time() - last_ckpt_time
+                            >= self.ckpt_interval_minutes * 60.0
                     ):
                         # This should not use run_on_main, because that
                         # includes a DDP barrier. That eventually leads to a
