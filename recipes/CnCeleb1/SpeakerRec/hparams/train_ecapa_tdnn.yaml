@@ -4,9 +4,9 @@
 # ################################
 
 # Basic parameters
-seed: 1986
+seed: 1988
 __set_seed: !apply:torch.manual_seed [!ref <seed>]
-output_folder: !ref results/ecapa_augment/<seed>
+output_folder: !ref results/ecapa_augment_epoch30/<seed>
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
@@ -32,12 +32,12 @@ skip_prep: False
 ckpt_interval_minutes: 15 # save checkpoint every N min
 
 # Training parameters
-number_of_epochs: 10
+number_of_epochs: 30
 batch_size: 36
 lr: 0.001
 base_lr: 0.00000001
 max_lr: !ref <lr>
-step_size: 65000
+step_size: 272000
 sample_rate: 16000
 sentence_len: 3.0 # seconds
 shuffle: True
