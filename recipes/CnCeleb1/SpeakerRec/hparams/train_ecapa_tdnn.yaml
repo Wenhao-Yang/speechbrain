@@ -37,8 +37,9 @@ number_of_epochs: 30
 batch_size: 32
 lr: 0.001
 base_lr: 0.00000001
+sch_mode: triangular2
 max_lr: !ref <lr>
-step_size: 65000
+step_size: 32365
 sample_rate: 16000
 sentence_len: 3.0 # seconds
 shuffle: True
@@ -163,6 +164,7 @@ lr_annealing: !new:speechbrain.nnet.schedulers.CyclicLRScheduler
     base_lr: !ref <base_lr>
     max_lr: !ref <max_lr>
     step_size: !ref <step_size>
+    mode: !ref <sch_mode>
 
 # Logging + checkpoints
 train_logger: !new:speechbrain.utils.train_logger.FileTrainLogger
