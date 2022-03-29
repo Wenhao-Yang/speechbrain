@@ -6,6 +6,7 @@ Authors
  * Mirco Ravanelli 2020
  * Aku Rouhe 2021
 """
+import pdb
 
 import os
 import sys
@@ -1059,6 +1060,7 @@ class Brain:
                     self.avg_train_loss = self.update_average(
                         loss, self.avg_train_loss
                     )
+                    pdb.set_trace()
                     t.set_postfix(train_loss=self.avg_train_loss,
                                   train_error=self.train_error_metrics.summarize("average"))
 
