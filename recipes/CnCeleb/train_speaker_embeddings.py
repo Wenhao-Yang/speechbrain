@@ -104,8 +104,8 @@ class SpeakerBrain(sb.core.Brain):
         """Gets called at the beginning of an epoch."""
         if stage != sb.Stage.TRAIN:
             self.error_metrics = self.hparams.error_stats()
+            print('error_metrics!')
 
-        pdb.set_trace()
         if stage == sb.Stage.TRAIN:
             self.train_error_metrics = self.hparams.train_error_stats()
 
