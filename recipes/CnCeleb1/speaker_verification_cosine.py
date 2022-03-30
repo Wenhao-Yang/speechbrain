@@ -399,8 +399,8 @@ def evaluate_kaldi_eer(target, non_target, cos=True, re_thre=False):
 
     # new_distances = np.array(new_distances).astype(np.float)
 
-    target = np.sort(target).astype(np.float)
-    non_target = np.sort(non_target).astype(np.float)
+    target = np.sort(target).astype(np.float32)
+    non_target = np.sort(non_target).astype(np.float32)
 
     target_size = target.size
     nontarget_size = non_target.size
