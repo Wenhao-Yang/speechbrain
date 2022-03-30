@@ -625,12 +625,12 @@ if __name__ == "__main__":
     eer, th = evaluate_kaldi_eer(torch.tensor(positive_scores),
                                  torch.tensor(negative_scores))  # , fast=params['fast_score'])
 
-    logger.info("EER(%%)=%f", eer * 100)
+    logger.info('EER(%):{:>18.6f}'.format(eer * 100))
 
     # min_dcf, th = minDCF(
     #     torch.tensor(positive_scores), torch.tensor(negative_scores)
     # )
     mindcf_01, mindcf_001 = evaluate_kaldi_mindcf(positive_scores, negative_scores)
 
-    logger.info("minDCF(0.01)=%f", mindcf_01)
-    logger.info("minDCF(0.01)=%f", mindcf_001)
+    logger.info("minDCF(0.01):{:>12.6f}".format(mindcf_01))
+    logger.info("minDCF(0.001):{:>11.6f}".format(mindcf_001))
