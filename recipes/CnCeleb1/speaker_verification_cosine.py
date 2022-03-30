@@ -499,7 +499,7 @@ def ComputeMinDcf(fnrs, fprs, thresholds, p_target, c_miss, c_fa):
 def evaluate_kaldi_mindcf(positive_scores, negative_scores, return_threshold=False):
     c_miss = 1
     c_fa = 1
-    labels = [int(x) for x in labels]
+    # labels = [int(x) for x in labels]
 
     labels = [1 for i in positive_scores]
     labels += [0 for i in negative_scores]
