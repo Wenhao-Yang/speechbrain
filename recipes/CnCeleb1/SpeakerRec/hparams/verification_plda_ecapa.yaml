@@ -34,7 +34,7 @@ train_data: !ref <save_folder>/train.csv
 enrol_data: !ref <save_folder>/enrol.csv
 test_data: !ref <save_folder>/test.csv
 
-batch_size: 64
+batch_size: 16
 n_train_snts: 100000 # used for normalization stats
 
 # Feature parameters

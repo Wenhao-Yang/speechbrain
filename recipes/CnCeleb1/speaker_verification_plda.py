@@ -64,7 +64,7 @@ def emb_computation_loop(split, set_loader, stat_file):
         )
         modelset = []
         segset = []
-        with tqdm(set_loader, dynamic_ncols=True) as t:
+        with tqdm(set_loader, ncols=100) as t:
             for batch in t:
                 ids = batch.id
                 wavs, lens = batch.sig
