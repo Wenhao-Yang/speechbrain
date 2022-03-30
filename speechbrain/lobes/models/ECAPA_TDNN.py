@@ -12,6 +12,7 @@ from speechbrain.dataio.dataio import length_to_mask
 from speechbrain.nnet.CNN import Conv1d as _Conv1d
 from speechbrain.nnet.normalization import BatchNorm1d as _BatchNorm1d
 from speechbrain.nnet.linear import Linear
+from speechbrain.lobes.models.filterlayer import Sinc2Conv, Wav2Conv
 
 
 # Skip transpose as much as possible for efficiency
@@ -390,19 +391,20 @@ class ECAPA_TDNN(torch.nn.Module):
     """
 
     def __init__(
-        self,
-        input_size,
-        device="cpu",
-        lin_neurons=192,
-        activation=torch.nn.ReLU,
-        channels=[512, 512, 512, 512, 1536],
-        kernel_sizes=[5, 3, 3, 3, 1],
-        dilations=[1, 2, 3, 4, 1],
-        attention_channels=128,
-        res2net_scale=8,
-        se_channels=128,
-        global_context=True,
-        groups=[1, 1, 1, 1, 1],
+            self,
+            input_size,
+            device="cpu",
+            input_type='fbank',
+            lin_neurons=192,
+            activation=torch.nn.ReLU,
+            channels=[512, 512, 512, 512, 1536],
+            kernel_sizes=[5, 3, 3, 3, 1],
+            dilations=[1, 2, 3, 4, 1],
+            attention_channels=128,
+            res2net_scale=8,
+            se_channels=128,
+            global_context=True,
+            groups=[1, 1, 1, 1, 1],
     ):
 
         super().__init__()
@@ -410,6 +412,12 @@ class ECAPA_TDNN(torch.nn.Module):
         assert len(channels) == len(dilations)
         self.channels = channels
         self.blocks = nn.ModuleList()
+        if input_type in ['fbank', 'mfcc']:
+            self.filter_layer = None
+        elif input_type == 'sinc':
+            self.filter_layer = Sinc2Conv(input_dim=1, out_dim=input_size)
+        elif input_type == 'wav2spk':
+            self.filter_layer = Wav2Conv(out_dim=input_size)
 
         # The initial TDNN layer
         self.blocks.append(
@@ -472,6 +480,9 @@ class ECAPA_TDNN(torch.nn.Module):
             Tensor of shape (batch, time, channel).
         """
         # Minimize transpose for efficiency
+        if self.filter_layer != None:
+            x = self.filter_layer(x)
+
         x = x.transpose(1, 2)
 
         xl = []
