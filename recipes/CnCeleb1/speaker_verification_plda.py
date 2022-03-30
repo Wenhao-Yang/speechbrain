@@ -10,6 +10,7 @@ Authors
     * Nauman Dawalatabad 2020
     * Mirco Ravanelli 2020
 """
+import pdb
 
 import os
 import sys
@@ -76,7 +77,10 @@ def emb_computation_loop(split, set_loader, stat_file):
                 # Enrollment and test embeddings
                 embs = compute_embeddings(wavs, lens)
                 xv = embs.squeeze().cpu().numpy()
-                embeddings = numpy.concatenate((embeddings, xv), axis=0)
+                try:
+                    embeddings = numpy.concatenate((embeddings, xv), axis=0)
+                except Exception as e:
+                    pdb.set_trace()
 
         modelset = numpy.array(modelset, dtype="|O")
         segset = numpy.array(segset, dtype="|O")
