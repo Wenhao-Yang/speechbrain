@@ -12,7 +12,7 @@ __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 # Folders and train_log file
 voxceleb_source: /home/yangwenhao/dataset/CN-Celeb
 data_folder: /home/yangwenhao/dataset/CN-Celeb #!PLACEHOLDER #e.g., /localscratch/voxceleb1
-output_folder: results/ecapa_augment/1986
+output_folder: results/ecapa_augment/1988
 save_folder: !ref <output_folder>/save/
 device: 'cuda:0'
 
@@ -48,6 +48,7 @@ n_mels: 80
 left_frames: 0
 right_frames: 0
 sentence_len: 3.0 # seconds
+split_ratio: [ 95,5 ]
 
 deltas: False
 
