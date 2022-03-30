@@ -553,7 +553,7 @@ if __name__ == "__main__":
         verification_pairs_file=veri_file_path,
         splits=["train", "dev", "test"],
         split_ratio=params["split_ratio"],
-        seg_dur=hparams["sentence_len"],
+        seg_dur=params["sentence_len"],
         source=params["voxceleb_source"]
         if "voxceleb_source" in params
         else None,
