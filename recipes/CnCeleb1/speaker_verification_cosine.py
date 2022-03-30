@@ -534,8 +534,8 @@ if __name__ == "__main__":
     veri_file_path = os.path.join(
         params["save_folder"], os.path.basename(params["verification_file"])
     )
-    assert os.path.exists(veri_file_path)
-    # download_file(params["verification_file"], veri_file_path)
+    if not os.path.exists(veri_file_path):
+        download_file(params["verification_file"], veri_file_path)
 
     from cnceleb_prepare import prepare_cnceleb  # noqa E402
 
