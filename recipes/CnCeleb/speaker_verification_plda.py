@@ -245,7 +245,7 @@ if __name__ == "__main__":
         save_folder=params["save_folder"],
         verification_pairs_file=veri_file_path,
         splits=["train", "test"],
-        split_ratio=[90, 10],
+        split_ratio=params["split_ratio"],  # [90, 10],
         seg_dur=3,
     )
 
