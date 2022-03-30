@@ -21,7 +21,8 @@ import numpy
 import pickle
 from tqdm.contrib import tqdm
 from hyperpyyaml import load_hyperpyyaml
-from speechbrain.utils.metric_stats import EER, minDCF
+# from speechbrain.utils.metric_stats import EER, minDCF
+from speechbrain.utils.metric_stats import evaluate_kaldi_mindcf, evaluate_kaldi_eer
 from speechbrain.processing.PLDA_LDA import StatObject_SB
 from speechbrain.processing.PLDA_LDA import Ndx
 from speechbrain.processing.PLDA_LDA import fast_PLDA_scoring
@@ -135,19 +136,23 @@ def verification_performance(scores_plda):
     del scores_plda
 
     # Final EER computation
-    eer, th = EER(torch.tensor(positive_scores), torch.tensor(negative_scores))
-    min_dcf, th = minDCF(
-        torch.tensor(positive_scores), torch.tensor(negative_scores)
-    )
-    return eer, min_dcf
+    # eer, th = EER(torch.tensor(positive_scores), torch.tensor(negative_scores))
+    eer, th = evaluate_kaldi_eer(torch.tensor(positive_scores),
+                                 torch.tensor(negative_scores))
+
+    mindcf_01, mindcf_001 = evaluate_kaldi_mindcf(positive_scores, negative_scores)
+    # min_dcf, th = minDCF(
+    #     torch.tensor(positive_scores), torch.tensor(negative_scores)
+    # )
+    return eer, mindcf_01, mindcf_001
 
 
 # Function to get mod and seg
-def get_utt_ids_for_test(ids, data_dict):
-    mod = [data_dict[x]["wav1"]["data"] for x in ids]
-    seg = [data_dict[x]["wav2"]["data"] for x in ids]
-
-    return mod, seg
+# def get_utt_ids_for_test(ids, data_dict):
+#     mod = [data_dict[x]["wav1"]["data"] for x in ids]
+#     seg = [data_dict[x]["wav2"]["data"] for x in ids]
+#
+#     return mod, seg
 
 
 def dataio_prep(params):
@@ -384,6 +389,8 @@ if __name__ == "__main__":
     del embeddings_stat
 
     # Final EER computation
-    eer, min_dcf = verification_performance(scores_plda)
-    logger.info("EER(%%)=%f", eer * 100)
-    logger.info("min_dcf=%f", min_dcf * 100)
+    eer, mindcf_01, mindcf_001 = verification_performance(scores_plda)
+
+    logger.info('EER(%):{:>18.6f}'.format(eer * 100))
+    logger.info("minDCF(0.01):{:>12.6f}".format(mindcf_01))
+    logger.info("minDCF(0.001):{:>11.6f}".format(mindcf_001))
