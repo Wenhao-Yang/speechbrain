@@ -12,8 +12,8 @@ __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 # Folders and train_log file
 voxceleb_source: /home/yangwenhao/dataset/CN-Celeb
 data_folder: /home/yangwenhao/dataset/CN-Celeb #!PLACEHOLDER #e.g., /localscratch/voxceleb1
-output_folder: results/ecapa_augment/1988
-save_folder: !ref <output_folder>/save/
+output_folder: results/ecapa_augment_epoch30
+save_folder: !ref <output_folder>/save/1988
 device: 'cuda:0'
 
 # Use the following links for the official voxceleb splits:
