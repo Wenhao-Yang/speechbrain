@@ -11,7 +11,7 @@ __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 # Folders and train_log file
 data_folder: /home/yangwenhao/dataset/CN-Celeb  # use vox 1, vox2, or vox1+vox2 datasets
 output_folder: results/ecapa_augment_epoch30/1988
-save_folder: !ref <output_folder>/save_test/
+save_folder: !ref <output_folder>/save_test_plda/
 device: 'cuda:0'
 
 # Use the following links for the official voxceleb splits:
