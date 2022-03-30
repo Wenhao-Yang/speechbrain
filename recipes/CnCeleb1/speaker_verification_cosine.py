@@ -504,6 +504,8 @@ def evaluate_kaldi_mindcf(positive_scores, negative_scores, return_threshold=Fal
     labels = [1 for i in positive_scores]
     labels += [0 for i in negative_scores]
 
+    scores = positive_scores + negative_scores
+
     fnrs, fprs, thresholds = ComputeErrorRates(scores, labels)
 
     p_target = 0.01
