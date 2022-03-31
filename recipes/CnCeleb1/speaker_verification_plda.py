@@ -77,10 +77,12 @@ def emb_computation_loop(split, set_loader, stat_file):
                 # Enrollment and test embeddings
                 embs = compute_embeddings(wavs, lens)
                 xv = embs.squeeze().cpu().numpy()
-                try:
-                    embeddings = numpy.concatenate((embeddings, xv), axis=0)
-                except Exception as e:
-                    pdb.set_trace()
+                if len(xv.shape) == 1:
+                    xv = xv.reshape(1, -1)
+                # try:
+                embeddings = numpy.concatenate((embeddings, xv), axis=0)
+                # except Exception as e:
+                #     pdb.set_trace()
 
         modelset = numpy.array(modelset, dtype="|O")
         segset = numpy.array(segset, dtype="|O")
