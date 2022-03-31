@@ -14,6 +14,8 @@ from speechbrain.utils.edit_distance import wer_summary, wer_details_for_batch
 from speechbrain.dataio.dataio import merge_char, split_word
 from speechbrain.dataio.wer import print_wer_summary, print_alignments
 import numpy as np
+from operator import itemgetter
+
 
 class MetricStats:
     """A default class for storing and summarizing arbitrary metrics.
