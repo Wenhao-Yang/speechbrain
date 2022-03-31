@@ -175,6 +175,7 @@ def verification_performance(scores_plda):
 
     # Final EER computation
     # eer, th = EER(torch.tensor(positive_scores), torch.tensor(negative_scores))
+    pdb.set_trace()
     eer, th = evaluate_kaldi_eer(torch.tensor(positive_scores),
                                  torch.tensor(negative_scores))
 
