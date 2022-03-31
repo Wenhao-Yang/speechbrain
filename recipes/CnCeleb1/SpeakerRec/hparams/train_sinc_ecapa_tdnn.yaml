@@ -9,7 +9,7 @@ __set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 
-output_folder: !ref results/sinc_ecapa_augment_epoch30/<seed>
+output_folder: !ref results/sinc_ecapa_augment/<seed>_epoch30_double
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
