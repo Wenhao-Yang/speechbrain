@@ -228,6 +228,7 @@ if __name__ == "__main__":
             "save_folder": hparams["save_folder"],
             "verification_pairs_file": veri_file_path,
             "splits": ["train", "dev"],
+            "data_folder2": hparams["data_folder2"] if 'data_folder2' in hparams else '',
             "split_ratio": hparams["split_ratio"],  # [90, 10],
             "seg_dur": hparams["sentence_len"],
         },

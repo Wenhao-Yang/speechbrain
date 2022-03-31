@@ -55,12 +55,13 @@ def prepare_cnceleb(
         verification_pairs_file,
         splits=["train", "dev", "test"],
         split_ratio=[90, 10],
+        data_folder2='',
         seg_dur=3.0,
         amp_th=5e-04,
-    source=None,
-    split_speaker=False,
-    random_segment=False,
-    skip_prep=False,
+        source=None,
+        split_speaker=False,
+        random_segment=False,
+        skip_prep=False,
 ):
     """
     Prepares the csv files for the Voxceleb1 or Voxceleb2 datasets.
@@ -155,6 +156,13 @@ def prepare_cnceleb(
     wav_lst_train, wav_lst_dev = _get_utt_split_lists(
         data_folder, split_ratio, verification_pairs_file, split_speaker
     )
+
+    if os.path.exists(data_folder2):
+        wav_lst_train2, wav_lst_dev2 = _get_utt_split_lists(data_folder2, split_ratio,
+                                                            verification_pairs_file='',
+                                                            split_speaker=split_speaker)
+        wav_lst_train.extend(wav_lst_train2)
+        wav_lst_dev.extend(wav_lst_dev2)
 
     # pdb.set_trace()
     # Creating csv file for training data
@@ -274,16 +282,20 @@ def _get_utt_split_lists(
     print("Getting file list...")
     for data_folder in data_folders:
 
-        test_lst = [
-            line.rstrip("\n").split(" ")[1]
-            for line in open(verification_pairs_file)
-        ]
-        test_lst = set(sorted(test_lst))
-        print('There are %d utterances in test trials!' % (len(test_lst)))
+        if not os.path.exists(verification_pairs_file):
+            # test_lst = []
+            test_spks = set([])
+        else:
+            test_lst = [
+                line.rstrip("\n").split(" ")[1]
+                for line in open(verification_pairs_file)
+            ]
+            test_lst = set(sorted(test_lst))
+            print('There are %d utterances in test trials!' % (len(test_lst)))
 
-        # test_spks = [snt.split("/")[0] for snt in test_lst]
-        test_spks = set([snt.split("/")[1].split('-')[0] for snt in test_lst])
-        print('There are %d spks in test trials!' % (len(test_spks)))
+            # test_spks = [snt.split("/")[0] for snt in test_lst]
+            test_spks = set([snt.split("/")[1].split('-')[0] for snt in test_lst])
+            print('There are %d spks in test trials!' % (len(test_spks)))
 
         path = os.path.join(data_folder, "data", "**", "*.flac")
         if split_speaker:
