@@ -149,7 +149,8 @@ def verification_performance(scores_plda):
             negative_scores = []
             s_file = open(save_file, "w")
 
-            for line in veri_test:  # open(veri_file_path):
+            # for line in veri_test:  # open(veri_file_path):
+            for line in tqdm(enumerate(veri_test), ncols=100):
                 # lab = int(line.split(" ")[2].rstrip().split(".")[0].strip())
                 lab = int(line.split(" ")[2].rstrip().split(".")[0].strip())
                 enrol_id = line.split(" ")[0].rstrip().split(".")[0].strip()
