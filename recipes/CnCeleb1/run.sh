@@ -17,7 +17,7 @@ done
 
 if [ $stage -le 0 ]; then
 
-  CUDA_VISIBLE_DEVICES=1,2 python -m torch.distributed.launch --nproc_per_node=2 train_speaker_embeddings.py SpeakerRec/hparams/train_ecapa_tdnn.yaml --distributed_launch --distributed_backend='nccl'
+  CUDA_VISIBLE_DEVICES=0,3 MASTER_PORT=378726 python -m torch.distributed.launch --nproc_per_node=2 train_speaker_embeddings.py SpeakerRec/hparams/train_ecapa_tdnn.yaml --distributed_launch --distributed_backend='nccl'
 
 
 #  CUDA_VISIBLE_DEVICES=0 python speaker_verification_cosine.py SpeakerRec/hparams/verification_ecapa.yaml
