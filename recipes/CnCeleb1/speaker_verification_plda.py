@@ -167,7 +167,7 @@ def verification_performance(scores_plda):
                 positive_scores.append(s)
             else:
                 negative_scores.append(s)
-            s_file.write("%s %s %i %f\n" % (enrol_id, test_id, lab, score))
+            s_file.write("%s %s %i %f\n" % (enrol_id, test_id, lab, s))
 
         s_file.close()
         # Clean variable
