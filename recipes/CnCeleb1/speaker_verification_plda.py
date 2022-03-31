@@ -122,26 +122,55 @@ def verification_performance(scores_plda):
     labels = []
     positive_scores = []
     negative_scores = []
-    for line in open(veri_file_path):
-        # lab = int(line.split(" ")[2].rstrip().split(".")[0].strip())
-        lab = int(line.split(" ")[2].rstrip().split(".")[0].strip())
-        enrol_id = line.split(" ")[0].rstrip().split(".")[0].strip()
-        test_id = line.split(" ")[1].rstrip().split(".")[0].strip().split("/")[1]
-        # test_id = line.split(" ")[1].rstrip().split(".")[0].strip()
-        # Assuming enrol_id and test_id are unique
-        i = int(numpy.where(scores_plda.modelset == enrol_id)[0][0])
-        j = int(numpy.where(scores_plda.segset == test_id)[0][0])
 
-        s = float(scores_plda.scoremat[i, j])
-        labels.append(lab)
-        ids.append(enrol_id + "<>" + test_id)
-        if lab == 1:
-            positive_scores.append(s)
+    with open(veri_file_path) as f:
+        veri_test = [line.rstrip() for line in f]
+
+    save_file = os.path.join(params["output_folder"], "scores.txt")
+    if os.path.isfile(save_file):
+        with open(save_file, "r") as f:
+            for l in f.readlines():
+                enrol_id, test_id, lab_pair, score = l.split()
+                lab_pair = int(lab_pair)
+                score = float(score)
+
+                if lab_pair == 1:
+                    positive_scores.append(score)
+                else:
+                    negative_scores.append(score)
+
+                # scores.append(score)
+
+        if (len(positive_scores) + len(negative_scores)) == len(veri_test):
+            logger.info("Loading scores from %s ..." % os.path.join(params["output_folder"], "scores.txt"))
+            # return positive_scores, negative_scores
         else:
-            negative_scores.append(s)
+            positive_scores = []
+            negative_scores = []
+            s_file = open(save_file, "w")
 
-    # Clean variable
-    del scores_plda
+            for line in veri_test:  # open(veri_file_path):
+                # lab = int(line.split(" ")[2].rstrip().split(".")[0].strip())
+                lab = int(line.split(" ")[2].rstrip().split(".")[0].strip())
+                enrol_id = line.split(" ")[0].rstrip().split(".")[0].strip()
+                test_id = line.split(" ")[1].rstrip().split(".")[0].strip().split("/")[1]
+                # test_id = line.split(" ")[1].rstrip().split(".")[0].strip()
+                # Assuming enrol_id and test_id are unique
+                i = int(numpy.where(scores_plda.modelset == enrol_id)[0][0])
+                j = int(numpy.where(scores_plda.segset == test_id)[0][0])
+
+                s = float(scores_plda.scoremat[i, j])
+                labels.append(lab)
+                ids.append(enrol_id + "<>" + test_id)
+                if lab == 1:
+                    positive_scores.append(s)
+                else:
+                    negative_scores.append(s)
+                s_file.write("%s %s %i %f\n" % (enrol_id, test_id, lab_pair, score))
+
+            s_file.close()
+            # Clean variable
+            del scores_plda
 
     # Final EER computation
     # eer, th = EER(torch.tensor(positive_scores), torch.tensor(negative_scores))
