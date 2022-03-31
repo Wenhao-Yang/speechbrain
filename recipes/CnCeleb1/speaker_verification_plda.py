@@ -77,6 +77,7 @@ def emb_computation_loop(split, set_loader, stat_file):
                 # Enrollment and test embeddings
                 embs = compute_embeddings(wavs, lens)
                 xv = embs.squeeze().cpu().numpy()
+
                 if len(xv.shape) == 1:
                     xv = xv.reshape(1, -1)
                 # try:
@@ -122,9 +123,9 @@ def verification_performance(scores_plda):
     positive_scores = []
     negative_scores = []
     for line in open(veri_file_path):
-        lab = int(line.split(" ")[0].rstrip().split(".")[0].strip())
-        enrol_id = line.split(" ")[1].rstrip().split(".")[0].strip()
-        test_id = line.split(" ")[2].rstrip().split(".")[0].strip()
+        lab = int(line.split(" ")[2].rstrip().split(".")[0].strip())
+        enrol_id = line.split(" ")[0].rstrip().split(".")[0].strip()
+        test_id = line.split(" ")[1].rstrip().split(".")[0].strip()
 
         # Assuming enrol_id and test_id are unique
         i = int(numpy.where(scores_plda.modelset == enrol_id)[0][0])
