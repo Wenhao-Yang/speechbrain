@@ -418,11 +418,7 @@ if __name__ == "__main__":
         overrides=overrides,
     )
 
-    Prepare
-    data
-    from dev of
-
-    Voxceleb1
+    # Prepare data from dev of Voxceleb1
     prepare_cnceleb(
         data_folder=params["data_folder"],
         save_folder=params["save_folder"],
