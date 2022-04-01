@@ -99,3 +99,9 @@ pretrainer: !new:speechbrain.utils.parameter_transfer.Pretrainer
 # EER(%):         12.227542
 # minDCF(0.01):    0.582927
 # minDCF(0.001):   0.709320
+
+# ecapa cos sinc 80
+
+# EER(%):         15.415376
+# minDCF(0.01):    0.694188
+# minDCF(0.001):   0.806649

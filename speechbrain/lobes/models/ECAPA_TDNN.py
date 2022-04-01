@@ -395,6 +395,7 @@ class ECAPA_TDNN(torch.nn.Module):
             input_size,
             device="cpu",
             input_type='fbank',
+            dropout_p=0,
             lin_neurons=192,
             activation=torch.nn.ReLU,
             channels=[512, 512, 512, 512, 1536],
@@ -415,7 +416,7 @@ class ECAPA_TDNN(torch.nn.Module):
         if input_type in ['fbank', 'mfcc']:
             self.filter_layer = None
         elif input_type == 'sinc':
-            self.filter_layer = Sinc2Conv(input_dim=1, out_dim=input_size)
+            self.filter_layer = Sinc2Conv(input_dim=1, out_dim=input_size, dropout_p=dropout_p)
         elif input_type == 'wav2spk':
             self.filter_layer = Wav2Conv(out_dim=input_size)
 

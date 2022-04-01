@@ -152,7 +152,7 @@ class SincConv_fast(nn.Module):
 
 # https://github.com/mravanelli/SincNet
 class Sinc2Conv(nn.Module):
-    def __init__(self, input_dim, out_dim=60, fs=16000):
+    def __init__(self, input_dim, out_dim=60, fs=16000, dropout_p=0.1):
         super(Sinc2Conv, self).__init__()
         self.fs = fs
         self.current_input = input_dim
@@ -161,10 +161,11 @@ class Sinc2Conv(nn.Module):
         # conv_layers = [(80, 251, 1), (60, 5, 1), (out_dim, 5, 1)]
         self.conv_layers = nn.ModuleList()
         self.sinc_conv = nn.Sequential(
-            SincConv_fast(80, 251, self.fs, stride=6),
+            SincConv_fast(80, 251, self.fs),  # , stride=6),
             nn.MaxPool1d(kernel_size=3),  # nn.AvgPool1d(kernel_size=3),
             nn.InstanceNorm1d(80),  # nn.LayerNorm([80, int((self.current_input - 251 + 1) / 6 / 3)]),
             nn.LeakyReLU(),
+            nn.Dropout(p=dropout_p)
         )
 
         self.current_input = int((self.current_input - 251 + 1) / 6 / 3)
@@ -173,14 +174,23 @@ class Sinc2Conv(nn.Module):
             nn.MaxPool1d(kernel_size=3),  # nn.AvgPool1d(kernel_size=3),
             nn.InstanceNorm1d(60),  # nn.LayerNorm([60, int((self.current_input - 5 + 1) / 3)]),
             nn.LeakyReLU(),
+            nn.Dropout(p=dropout_p)
         )
 
         self.current_input = int((self.current_input - 5 + 1) / 3)
         self.conv_layer3 = nn.Sequential(
-            nn.Conv1d(in_channels=60, out_channels=self.out_dim, kernel_size=5, stride=1),
+            nn.Conv1d(in_channels=60, out_channels=60, kernel_size=5, stride=1),
             nn.MaxPool1d(kernel_size=3),
             nn.InstanceNorm1d(self.out_dim),  # nn.LayerNorm([self.out_dim, int((self.current_input - 5 + 1) / 3)]),
             nn.LeakyReLU(),
+            nn.Dropout(p=dropout_p)
+        )
+        self.conv_layer4 = nn.Sequential(
+            nn.Conv1d(in_channels=60, out_channels=self.out_dim, kernel_size=5, stride=2),
+            nn.AvgPool1d(kernel_size=3),
+            nn.InstanceNorm1d(self.out_dim),  # nn.LayerNorm([self.out_dim, int((self.current_input - 5 + 1) / 3)]),
+            nn.LeakyReLU(),
+            nn.Dropout(p=dropout_p)
         )
 
         self.current_output = int((self.current_input - 5 + 1) / 3)
@@ -195,7 +205,7 @@ class Sinc2Conv(nn.Module):
         x = self.sinc_conv(x)
         x = self.conv_layer2(x)
         x = self.conv_layer3(x)
-        # x = self.conv_layer4(x)
+        x = self.conv_layer4(x)
 
         return x.transpose(1, 2)
 
