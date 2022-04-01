@@ -158,7 +158,7 @@ def prepare_cnceleb(
     )
 
     if os.path.exists(data_folder2):
-        wav_lst_train2, wav_lst_dev2 = _get_utt_split_lists(data_folder2, split_ratio,
+        wav_lst_train2, wav_lst_dev2 = _get_utt_split_lists([data_folder2], split_ratio,
                                                             verification_pairs_file='',
                                                             split_speaker=split_speaker)
         wav_lst_train.extend(wav_lst_train2)
