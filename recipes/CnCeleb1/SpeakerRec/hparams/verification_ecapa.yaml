@@ -35,10 +35,10 @@ pretrain_path: results/sinc_ecapa_augment/1988_epoch30_double/save/CKPT+2022-04-
 #/embedding_model.ckpt
 
 # csv files
-train_dir: results/sinc_ecapa_augment/1988_epoch30_double/save
-train_data: !ref <train_dir>/train.csv
-enrol_data: !ref <train_dir>/enrol.csv
-test_data: !ref <train_dir>/test.csv
+#train_dir: results/sinc_ecapa_augment/1988_epoch30_double/save
+train_data: !ref <save_folder>/train.csv
+enrol_data: !ref <save_folder>/enrol.csv
+test_data: !ref <save_folder>/test.csv
 
 batch_size: 8
 score_norm: 's-norm' # z-norm t-norm s-norm none
