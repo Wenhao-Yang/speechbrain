@@ -38,7 +38,7 @@ skip_prep: True
 ckpt_interval_minutes: 15 # save checkpoint every N min
 
 # Training parameters
-number_of_epochs: 20
+number_of_epochs: 30
 batch_size: 64
 lr: 0.001
 base_lr: 0.00000001
