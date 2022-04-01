@@ -43,8 +43,13 @@ def compute_embedding(wavs, wav_lens):
         in the length (e.g., [0.8 0.6 1.0])
     """
     with torch.no_grad():
-        feats = params["compute_features"](wavs)
-        feats = params["mean_var_norm"](feats, wav_lens)
+        feats = wavs
+        if "compute_features" in params:
+            feats = params["compute_features"](feats)
+
+        if "mean_var_norm" in params:
+            feats = params["mean_var_norm"](feats, wav_lens)
+
         embeddings = params["embedding_model"](feats, wav_lens)
         embeddings = params["mean_var_norm_emb"](
             embeddings, torch.ones(embeddings.shape[0]).to(embeddings.device)
@@ -414,18 +419,18 @@ if __name__ == "__main__":
     )
 
     # Prepare data from dev of Voxceleb1
-    prepare_cnceleb(
-        data_folder=params["data_folder"],
-        save_folder=params["save_folder"],
-        verification_pairs_file=veri_file_path,
-        splits=["train", "dev", "test"],
-        split_ratio=params["split_ratio"],
-        seg_dur=params["sentence_len"],
-        source=params["voxceleb_source"]
-        if "voxceleb_source" in params
-        else None,
-        skip_prep=params["skip_prep"],
-    )
+    # prepare_cnceleb(
+    #     data_folder=params["data_folder"],
+    #     save_folder=params["save_folder"],
+    #     verification_pairs_file=veri_file_path,
+    #     splits=["train", "dev", "test"],
+    #     split_ratio=params["split_ratio"],
+    #     seg_dur=params["sentence_len"],
+    #     source=params["voxceleb_source"]
+    #     if "voxceleb_source" in params
+    #     else None,
+    #     skip_prep=params["skip_prep"],
+    # )
 
     # here we create the datasets objects as well as tokenization and encoding
     train_dataloader, enrol_dataloader, test_dataloader = dataio_prep(params)
