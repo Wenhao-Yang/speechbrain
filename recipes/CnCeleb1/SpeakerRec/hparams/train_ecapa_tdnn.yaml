@@ -58,7 +58,7 @@ right_frames: 0
 deltas: False
 
 # Number of speakers
-out_n_neurons: 797 #797 for c1 1996 for c2, 2793 for c1+c2
+out_n_neurons: 2793 #797 for c1 1996 for c2, 2793 for c1+c2
 
 dataloader_options:
     batch_size: !ref <batch_size>
