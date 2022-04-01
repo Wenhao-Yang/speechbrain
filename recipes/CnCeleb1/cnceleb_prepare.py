@@ -297,7 +297,7 @@ def _get_utt_split_lists(
             test_spks = set([snt.split("/")[1].split('-')[0] for snt in test_lst])
             print('There are %d spks in test trials!' % (len(test_spks)))
 
-        path = os.path.join(data_folder, "data", "**", "*.flac")
+        path = os.path.join(data_folder, "data*", "**", "*.flac")
         if split_speaker:
             # avoid test speakers for train and dev splits
             audio_files_dict = {}
@@ -321,10 +321,15 @@ def _get_utt_split_lists(
             train_snts = []
             dev_snts = []
 
-            pbar = tqdm(glob.glob(path, recursive=True), ncols=100)
+            wav_paths = glob.glob(path, recursive=True)
+            if len(wav_paths) == 0:
+                path = os.path.join(data_folder, "data*", "**", "*.wav")
+                wav_paths = glob.glob(path, recursive=True)
+
+            pbar = tqdm(wav_paths, ncols=100)
             for f in pbar:
                 try:
-                    spk_id = f.split("/data/")[1].split("/")[0]
+                    spk_id = f.split("/")[-2]  # .split("/")[0]
                 except ValueError:
                     logger.info(f"Malformed path: {f}")
                     continue
