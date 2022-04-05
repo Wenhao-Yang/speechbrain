@@ -50,7 +50,7 @@ n_train_snts: 100000 # used for normalization stats
 
 # Feature parameters
 n_mels: 80
-input_type: sinc
+input_type: fbank
 
 left_frames: 0
 right_frames: 0
