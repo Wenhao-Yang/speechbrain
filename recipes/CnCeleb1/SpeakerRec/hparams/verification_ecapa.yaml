@@ -24,14 +24,14 @@ device: 'cuda:0'
 # VoxCeleb1-E and VoxCeleb1-H lists are drawn from the VoxCeleb1 training set.
 # Therefore you cannot use any files in VoxCeleb1 for training if you are using these lists for testing.
 verification_file: /home/yangwenhao/dataset/CN-Celeb/eval/lists/trials.lst
-skip_prep: false
+skip_prep: true
 fast_score: true
 # Here, the pretrained embedding model trained with train_speaker_embeddings.py hparams/train_ecapa_tdnn.yaml
 # is downloaded from the speechbrain HuggingFace repository.
 # However, a local path pointing to a directory containing your checkpoints may also be specified
 # instead (see pretrainer below)
 
-pretrain_path: results/ecapa_augment_epoch30/1988_cn12/save/CKPT+2022-04-04+15-19-42+00
+pretrain_path: results/ecapa_augment_epoch30/1988_cn12/save/CKPT+2022-04-04+15-27-15+00
 
 # results/sinc_ecapa_augment/1988_epoch30_double/save/CKPT+2022-04-01+05-18-46+00
 #    results/ecapa_augment_epoch30/1988/save/CKPT+2022-03-30+05-41-13+00
