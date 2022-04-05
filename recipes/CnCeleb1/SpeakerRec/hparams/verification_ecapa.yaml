@@ -12,7 +12,8 @@ __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 # Folders and train_log file
 voxceleb_source: /home/yangwenhao/dataset/CN-Celeb
 data_folder: /home/yangwenhao/dataset/CN-Celeb #!PLACEHOLDER #e.g., /localscratch/voxceleb1
-output_folder: results/sinc_ecapa_augment/1988_epoch30_double
+data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
+output_folder: results/ecapa_augment_epoch30/1988_cn12
 save_folder: !ref <output_folder>/save_test
 device: 'cuda:0'
 
@@ -30,7 +31,9 @@ fast_score: true
 # However, a local path pointing to a directory containing your checkpoints may also be specified
 # instead (see pretrainer below)
 
-pretrain_path: results/sinc_ecapa_augment/1988_epoch30_double/save/CKPT+2022-04-01+05-18-46+00
+pretrain_path: results/ecapa_augment_epoch30/1988_cn12/save/CKPT+2022-04-04+15-19-42+00
+
+# results/sinc_ecapa_augment/1988_epoch30_double/save/CKPT+2022-04-01+05-18-46+00
 #    results/ecapa_augment_epoch30/1988/save/CKPT+2022-03-30+05-41-13+00
 #/embedding_model.ckpt
 
@@ -93,7 +96,7 @@ pretrainer: !new:speechbrain.utils.parameter_transfer.Pretrainer
     paths:
         embedding_model: !ref <pretrain_path>/embedding_model.ckpt
 
-
+# cnc1
 # ecapa cos fb80
 
 # EER(%):         12.227542

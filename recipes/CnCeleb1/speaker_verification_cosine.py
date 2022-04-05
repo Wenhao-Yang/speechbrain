@@ -421,6 +421,7 @@ if __name__ == "__main__":
     # Prepare data from dev of Voxceleb1
     prepare_cnceleb(
         data_folder=params["data_folder"],
+        data_folder2=params["data_folder2"] if 'data_folder2' in params else '',
         save_folder=params["save_folder"],
         verification_pairs_file=veri_file_path,
         splits=["train", "dev", "test"],
