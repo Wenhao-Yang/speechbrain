@@ -273,7 +273,7 @@ class Wav2Conv(nn.Module):
         super(Wav2Conv, self).__init__()
 
         in_d = 1
-        conv_layers = [(40, 10, 5), (200, 8, 4), (300, 4, 2), (512, 4, 2), (out_dim, 4, 2)]
+        conv_layers = [(40, 10, 5), (200, 5, 4), (300, 5, 2), (512, 3, 2), (out_dim, 3, 2)]
         self.conv_layers = nn.ModuleList()
         for dim, k, stride in conv_layers:
             self.conv_layers.append(self.block(in_d, dim, k, stride))
