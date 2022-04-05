@@ -9,7 +9,7 @@ __set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 
-output_folder: !ref results/sinc_ecapa_augment/<seed>_epoch30_double
+output_folder: !ref results/wav2_ecapa_augment/<seed>_epoch30_double
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
@@ -50,7 +50,7 @@ chunk_size: 2.0 # seconds
 random_chunk: True
 
 # Feature parameters
-input_type: sinc
+input_type: wav2spk
 n_mels: 80
 left_frames: 0
 right_frames: 0
