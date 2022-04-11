@@ -311,3 +311,42 @@ class Wav2Conv(nn.Module):
         tmp_gate = self.tmp_gate(x.transpose(1, 2)).transpose(1, 2)
         x = x * tmp_gate
         return x.transpose(1, 2)
+
+
+class TimeFreqMaskLayer(nn.Module):
+    def __init__(self, mask_len=[5, 10], normalized=True):
+        super(TimeFreqMaskLayer, self).__init__()
+        self.mask_len = mask_len
+        self.normalized = normalized
+
+    def forward(self, x):
+        if not self.training:
+            return x
+
+        # assert self.mask_len < x.shape[-2]
+
+        this_len = np.random.randint(low=0, high=self.mask_len[0])
+        start = np.random.randint(0, x.shape[-2] - this_len)
+        x_shape = len(x.shape)
+
+        time_mean = x.mean(dim=-2, keepdim=True)
+        freq_mean = x.mean(dim=-1, keepdim=True)
+
+        if x_shape == 4:
+            x[:, :, start:(start + this_len), :] = time_mean
+        elif x_shape == 3:
+            x[:, start:(start + this_len), :] = time_mean
+
+        this_len = np.random.randint(low=0, high=self.mask_len[1])
+        start = np.random.randint(0, x.shape[-1] - this_len)
+        x_shape = len(x.shape)
+
+        if x_shape == 4:
+            x[:, :, :, start:(start + this_len)] = freq_mean
+        elif x_shape == 3:
+            x[:, :, start:(start + this_len)] = freq_mean
+
+        return x
+
+    def __repr__(self):
+        return "TimeFreqMaskLayer(mask_len=%s)" % str(self.mask_len)
