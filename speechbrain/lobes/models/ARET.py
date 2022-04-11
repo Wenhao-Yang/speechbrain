@@ -601,13 +601,13 @@ class ShuffleTDNNBlock(nn.Module):
 
 
 class RET(nn.Module):
-    def __init__(self, num_classes, embedding_size, input_dim, alpha=0., input_norm='',
+    def __init__(self, embedding_size, input_dim, alpha=0., input_norm='',
                  channels=[512, 512, 512, 512, 512, 1536], context=[5, 3, 3, 5], activation='leakyrelu',
                  downsample=None, resnet_size=17, dilation=[1, 1, 1, 1], stride=[1],
                  red_ratio=2, dropout_p=0.0, dropout_layer=False, encoder_type='SASP2', block_type='agg',
                  mask='None', mask_len=[5, 10], **kwargs):
         super(RET, self).__init__()
-        self.num_classes = num_classes
+        # self.num_classes = num_classes
         self.dropout_p = dropout_p
         self.dropout_layer = dropout_layer
         self.input_dim = input_dim
