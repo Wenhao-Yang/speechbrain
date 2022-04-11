@@ -13,8 +13,9 @@ import torch  # noqa: F401
 import torch.nn as nn
 from torch import Tensor
 
-from filterlayer import TimeFreqMaskLayer
-from pooling import StatisticPooling, SelfAttentionPooling, SelfAttentionPooling_v2, AttentionStatisticPooling, \
+from speechbrain.lobes.models.filterlayer import TimeFreqMaskLayer
+from speechbrain.lobes.models.pooling import StatisticPooling, SelfAttentionPooling, SelfAttentionPooling_v2, \
+    AttentionStatisticPooling, \
     AttentionStatisticPooling_v2
 import torch.nn.functional as F
 from speechbrain.dataio.dataio import length_to_mask
