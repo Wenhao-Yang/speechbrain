@@ -960,7 +960,7 @@ class DistributeLoss(nn.Module):
             labels = labels.unsqueeze(1)
 
         if len(dist.shape) == 3:
-            labels = labels.squeeze(1)
+            dist = dist.squeeze(1)
 
         # pdb.set_trace()
         # print(labels.shape, dist.shape)
