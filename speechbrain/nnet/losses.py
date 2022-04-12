@@ -959,8 +959,11 @@ class DistributeLoss(nn.Module):
         if len(labels.shape) == 1:
             labels = labels.unsqueeze(1)
 
+        if len(dist.shape) == 3:
+            labels = labels.squeeze(1)
+
         # pdb.set_trace()
-        print(labels.shape, dist.shape)
+        # print(labels.shape, dist.shape)
         positive_dist = dist.gather(dim=1, index=labels)
 
         negative_label = torch.arange(dist.shape[1]).reshape(1, -1).repeat(positive_dist.shape[0], 1)
