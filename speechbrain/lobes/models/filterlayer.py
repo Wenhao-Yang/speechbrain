@@ -350,3 +350,30 @@ class TimeFreqMaskLayer(nn.Module):
 
     def __repr__(self):
         return "TimeFreqMaskLayer(mask_len=%s)" % str(self.mask_len)
+
+
+class FreqMaskLayer(nn.Module):
+    def __init__(self, mask_len=25, normalized=False):
+        super(FreqMaskLayer, self).__init__()
+        self.mask_len = mask_len
+        self.normalized = normalized
+
+    def forward(self, x):
+        if not self.training:
+            return x
+
+        # assert self.mask_len < x.shape[-1]
+        this_len = np.random.randint(low=0, high=self.mask_len)
+        start = np.random.randint(0, x.shape[-1] - this_len)
+        x_shape = len(x.shape)
+
+        this_mean = x.mean(dim=-1, keepdim=True)  # .add(1e-6)
+        if x_shape == 4:
+            x[:, :, :, start:(start + this_len)] = this_mean
+        elif x_shape == 3:
+            x[:, :, start:(start + this_len)] = this_mean
+
+        return x
+
+    def __repr__(self):
+        return "FreqMaskLayer(mask_len=%f)" % self.mask_len

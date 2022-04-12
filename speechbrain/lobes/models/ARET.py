@@ -13,7 +13,7 @@ import torch  # noqa: F401
 import torch.nn as nn
 from torch import Tensor
 
-from speechbrain.lobes.models.filterlayer import TimeFreqMaskLayer
+from speechbrain.lobes.models.filterlayer import TimeFreqMaskLayer, FreqMaskLayer
 from speechbrain.lobes.models.pooling import StatisticPooling, SelfAttentionPooling, SelfAttentionPooling_v2, \
     AttentionStatisticPooling, \
     AttentionStatisticPooling_v2
@@ -638,6 +638,8 @@ class RET(nn.Module):
 
         if self.mask == "both":
             self.mask_layer = TimeFreqMaskLayer(mask_len=mask_len)
+        if self.mask == "freq":
+            self.mask_layer = FreqMaskLayer(mask_len=mask_len[1])
         else:
             self.mask_layer = None
 
