@@ -934,6 +934,90 @@ class AdditiveAngularMargin(AngularMargin):
         return self.scale * outputs
 
 
+class DistributeLoss(nn.Module):
+    """Distribute of Distance loss.
+
+    """
+
+    def __init__(self, stat_type="maxmargin", margin=0.2, p_target=0.1):
+        super(DistributeLoss, self).__init__()
+        self.stat_type = stat_type
+        self.margin = margin
+        self.p_target = p_target
+
+    def forward(self, dist, labels):
+        """
+        Args:
+            x: feature matrix with shape (batch_size, feat_dim).
+            labels: ground truth labels with shape (batch_size).
+        """
+        # norms = self.centers.data.norm(p=2, dim=1, keepdim=True).add(1e-14)
+        # self.centers.data = self.centers.data / norms * self.alpha
+
+        if len(labels.shape) == 1:
+            labels = labels.unsqueeze(1)
+
+        positive_dist = dist.gather(dim=1, index=labels)
+
+        negative_label = torch.arange(dist.shape[1]).reshape(1, -1).repeat(positive_dist.shape[0], 1)
+        if labels.is_cuda:
+            negative_label = negative_label.cuda()
+
+        negative_label = negative_label.scatter(1, labels, -1)
+        negative_label = torch.where(negative_label != -1)[1].reshape(positive_dist.shape[0], -1)
+
+        negative_dist = dist.gather(dim=1, index=negative_label)
+
+        mean = positive_dist.mean()  # .clamp_min(0)
+
+        if self.stat_type == "stddmean":
+            loss = positive_dist.std() / mean.clamp(min=1e-6)
+            loss = loss ** 2
+
+        elif self.stat_type == "kurtoses":
+            diffs = positive_dist - mean
+            var = torch.mean(torch.pow(diffs, 2.0))
+            std = torch.pow(var, 0.5)
+            z_scores = diffs / std
+
+            kurtoses = torch.mean(torch.pow(z_scores, 4.0)) - 3.0
+            # skewness = torch.mean(torch.pow(z_scores, 3.0))
+            loss = (-kurtoses).clamp_min(0)
+        elif self.stat_type == "margin":
+            positive_theta = torch.acos(positive_dist)
+            loss = (2 * positive_theta - self.margin).clamp_min(0).mean()
+        elif self.stat_type == "margin1":
+            positive_theta = torch.acos(positive_dist)
+            loss = (positive_theta - self.margin).clamp_min(0).mean()
+        elif self.stat_type == "margin1sum":
+            positive_theta = torch.acos(positive_dist)
+            loss = (positive_theta - self.margin).clamp_min(0).sum()
+        elif self.stat_type == "marginsum":
+            positive_theta = torch.acos(positive_dist)
+            loss = (2 * positive_theta - self.margin).clamp_min(0).sum()
+        elif self.stat_type == "maxmargin":
+            positive_theta = torch.acos(positive_dist)
+            # loss = (2 * positive_theta - self.margin).clamp_min(0).max()
+            loss = (positive_theta - self.margin).clamp_min(0).max()
+        elif self.stat_type == "maxnegative":
+            negative_theta = torch.acos(negative_dist)
+            # loss = (2 * positive_theta - self.margin).clamp_min(0).max()
+            loss = (0.5 * np.pi - negative_theta - self.margin).clamp_min(0).max()
+
+        elif self.stat_type == "mindcf":
+            positive_theta = torch.acos(positive_dist)
+            negative_theta = torch.acos(negative_dist)
+
+            loss = self.p_target * positive_theta.clamp_min(self.margin).max() + (
+                    self.p_target - 1) * negative_theta.clamp_max(0.5 * np.pi - self.margin).min()
+
+        return loss
+
+    def __repr__(self):
+        return "DistributeLoss(margin=%f, stat_type=%s, self.p_target=%s)" % (
+            self.margin, self.stat_type, self.p_target)
+
+
 class LogSoftmaxWrapper(nn.Module):
     """
     Arguments
