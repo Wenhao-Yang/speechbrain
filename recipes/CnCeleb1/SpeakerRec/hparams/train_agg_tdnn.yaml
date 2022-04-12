@@ -9,13 +9,13 @@ __set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 
-output_folder: !ref results/aggt_spechaug_augment_epoch30/<seed>
+output_folder: !ref results/aggt_spechaug_augment_epoch30/<seed>_cn12
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
 # Data files
 data_folder: /home/yangwenhao/dataset/CN-Celeb # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
-#data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
+data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
 
 train_annotation: !ref <save_folder>/train.csv
 valid_annotation: !ref <save_folder>/dev.csv
@@ -34,7 +34,7 @@ rir_folder: /home/yangwenhao/dataset # Change it if needed
 
 verification_file: /home/yangwenhao/dataset/CN-Celeb/eval/lists/trials.lst
 
-skip_prep: False
+skip_prep: True
 ckpt_interval_minutes: 15 # save checkpoint every N min
 
 # Training parameters
@@ -48,7 +48,7 @@ step_size: 91545
 sample_rate: 16000
 sentence_len: 3.0 # seconds
 shuffle: True
-chunk_size: 3.0 # seconds
+chunk_size: 2.0 # seconds
 random_chunk: True
 
 # Feature parameters
@@ -74,7 +74,7 @@ compute_features: !new:speechbrain.lobes.features.Fbank
 
 embedding_model: !new:speechbrain.lobes.models.ARET.RET
     input_dim: !ref <n_mels>
-    mask: freq
+    mask: None
     channels: [ 512, 512, 512, 512, 512, 1536 ]
     context: [ 5, 3, 3, 5 ]
     dilation: [ 1, 1, 1, 1 ]
