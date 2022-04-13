@@ -25,7 +25,7 @@ device: 'cuda:0'
 # VoxCeleb1-E and VoxCeleb1-H lists are drawn from the VoxCeleb1 training set.
 # Therefore you cannot use any files in VoxCeleb1 for training if you are using these lists for testing.
 verification_file: /home/yangwenhao/dataset/CN-Celeb/eval/lists/trials.lst
-skip_prep: false
+skip_prep: true
 fast_score: true
 # Here, the pretrained embedding model trained with train_speaker_embeddings.py hparams/train_ecapa_tdnn.yaml
 # is downloaded from the speechbrain HuggingFace repository.
@@ -73,12 +73,12 @@ enrol_dataloader_opts:
 test_dataloader_opts:
     batch_size: !ref <batch_size>
 
-#compute_features: !new:speechbrain.lobes.features.Fbank
-#    n_mels: !ref <n_mels>
-#
-#mean_var_norm: !new:speechbrain.processing.features.InputNormalization
-#    norm_type: sentence
-#    std_norm: False
+compute_features: !new:speechbrain.lobes.features.Fbank
+    n_mels: !ref <n_mels>
+
+mean_var_norm: !new:speechbrain.processing.features.InputNormalization
+    norm_type: sentence
+    std_norm: False
 
 embedding_model: !new:speechbrain.lobes.models.ECAPA_TDNN.ECAPA_TDNN
     input_size: !ref <n_mels>
