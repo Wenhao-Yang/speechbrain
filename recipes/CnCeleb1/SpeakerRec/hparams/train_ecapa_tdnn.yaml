@@ -9,7 +9,7 @@ __set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 
-output_folder: !ref results/ecapa_augment_epoch30/<seed>_cn1_dist
+output_folder: !ref results/ecapa_augment_epoch30/<seed>_cn1_3s #_dist
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
@@ -34,7 +34,7 @@ rir_folder: /home/yangwenhao/dataset # Change it if needed
 
 verification_file: /home/yangwenhao/dataset/CN-Celeb/eval/lists/trials.lst
 
-skip_prep: True
+skip_prep: false
 ckpt_interval_minutes: 15 # save checkpoint every N min
 
 # Training parameters
@@ -48,7 +48,7 @@ step_size: 91545
 sample_rate: 16000
 sentence_len: 3.0 # seconds
 shuffle: True
-chunk_size: 2.0 # seconds
+chunk_size: 3.0 # seconds
 random_chunk: True
 
 # Feature parameters
@@ -158,7 +158,7 @@ compute_cost: !new:speechbrain.nnet.losses.LogSoftmaxWrapper
         margin: 0.2
         scale: 30
 
-second_loss_ratio: 1
+second_loss_ratio: 0
 compute_cost2: !new:speechbrain.nnet.losses.DistributeLoss
     stat_type: maxmargin
     margin: 0.2
