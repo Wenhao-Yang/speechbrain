@@ -13,7 +13,8 @@ __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 voxceleb_source: /home/yangwenhao/dataset/CN-Celeb
 data_folder: /home/yangwenhao/dataset/CN-Celeb #!PLACEHOLDER #e.g., /localscratch/voxceleb1
 #data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
-output_folder: results/wav2_ecapa_augment/1988_epoch30_double
+output_folder: results/ecapa_augment_epoch30/<seed>_cn1_dist
+#    results/wav2_ecapa_augment/1988_epoch30_double
 save_folder: !ref <output_folder>/save_test
 device: 'cuda:0'
 
@@ -31,8 +32,8 @@ fast_score: true
 # However, a local path pointing to a directory containing your checkpoints may also be specified
 # instead (see pretrainer below)
 
-pretrain_path: results/wav2_ecapa_augment/1988_epoch30_double/save/CKPT+2022-04-06+06-02-15+00
-
+pretrain_path: results/ecapa_augment_epoch30/1988_cn1_dist/save/CKPT+2022-04-13+11-36-14+00
+#    results/wav2_ecapa_augment/1988_epoch30_double/save/CKPT+2022-04-06+06-02-15+00
 #    results/ecapa_augment_epoch30/1988_cn12/save/CKPT+2022-04-04+15-27-15+00
 
 # results/sinc_ecapa_augment/1988_epoch30_double/save/CKPT+2022-04-01+05-18-46+00
@@ -52,8 +53,8 @@ n_train_snts: 100000 # used for normalization stats
 
 # Feature parameters
 n_mels: 80
-#input_type: fbank
-input_type: wav2spk
+input_type: fbank
+#input_type: wav2spk
 
 left_frames: 0
 right_frames: 0
