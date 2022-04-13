@@ -34,7 +34,7 @@ rir_folder: /home/yangwenhao/dataset # Change it if needed
 
 verification_file: /home/yangwenhao/dataset/CN-Celeb/eval/lists/trials.lst
 
-skip_prep: false
+skip_prep: true
 ckpt_interval_minutes: 15 # save checkpoint every N min
 
 # Training parameters
@@ -44,7 +44,7 @@ lr: 0.001
 base_lr: 0.00000001
 sch_mode: triangular2
 max_lr: !ref <lr>
-step_size: 91545
+step_size: 16155
 sample_rate: 16000
 sentence_len: 3.0 # seconds
 shuffle: True
