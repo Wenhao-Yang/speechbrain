@@ -6,7 +6,7 @@
 # time: 2022/3/20 01:05
 # Description: 
 
-stage=0
+stage=30
 
 waited=0
 while [ $(ps 17765 | wc -l) -eq 2 ]; do
@@ -47,6 +47,17 @@ fi
 if [ $stage -le 20 ]; then
 
   CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 train_speaker_embeddings.py SpeakerRec/hparams/train_agg_tdnn.yaml --distributed_launch --distributed_backend='nccl'
+
+
+#  CUDA_VISIBLE_DEVICES=0 python speaker_verification_cosine.py SpeakerRec/hparams/verification_ecapa.yaml
+#  CUDA_VISIBLE_DEVICES=0 python speaker_verification_plda.py SpeakerRec/hparams/verification_plda_ecapa.yaml
+
+  exit
+fi
+
+if [ $stage -le 30 ]; then
+
+  CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 train_speaker_embeddings.py SpeakerRec/hparams/train_resnet.yaml --distributed_launch --distributed_backend='nccl'
 
 
 #  CUDA_VISIBLE_DEVICES=0 python speaker_verification_cosine.py SpeakerRec/hparams/verification_ecapa.yaml
