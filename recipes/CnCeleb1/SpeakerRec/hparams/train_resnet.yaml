@@ -165,6 +165,8 @@ compute_cost: !new:speechbrain.nnet.losses.LogSoftmaxWrapper
         margin: 0.2
         scale: 30
 
+second_loss_ratio: 0
+
 compute_error: !name:speechbrain.nnet.losses.classification_error
 
 
