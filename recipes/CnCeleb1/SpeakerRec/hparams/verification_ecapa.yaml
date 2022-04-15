@@ -102,10 +102,15 @@ pretrainer: !new:speechbrain.utils.parameter_transfer.Pretrainer
         embedding_model: !ref <pretrain_path>/embedding_model.ckpt
 
 # cnc1
-# ecapa cos fb80
+# ecapa cos fb80 2s
 # EER(%):         12.227542
 # minDCF(0.01):    0.582927
 # minDCF(0.001):   0.709320
+
+# ecapa cos fb80 3s
+# EER(%):         13.348353
+# minDCF(0.01):    0.602665
+# minDCF(0.001):   0.730496
 
 # ecapa cos sinc 80
 # EER(%):         15.415376
