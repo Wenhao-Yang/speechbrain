@@ -44,7 +44,7 @@ lr: 0.001
 base_lr: 0.00000001
 sch_mode: triangular2
 max_lr: !ref <lr>
-step_size: 91545
+step_size: 16155
 sample_rate: 16000
 sentence_len: 3.0 # seconds
 shuffle: True
@@ -84,6 +84,7 @@ embedding_model: !new:speechbrain.lobes.models.ResNet.ThinResNet
     downsample: k5
     block_type: cbam
     resnet_size: 34
+    fast: none1
 
 
 classifier: !new:speechbrain.lobes.models.ResNet.Classifier
@@ -179,6 +180,17 @@ lr_annealing: !new:speechbrain.nnet.schedulers.CyclicLRScheduler
     max_lr: !ref <max_lr>
     step_size: !ref <step_size>
     mode: !ref <sch_mode>
+
+#opt_class: !name:torch.optim.Adam
+#    lr: !ref <lr>
+#    weight_decay: 0.000002
+#
+#lr_annealing: !new:speechbrain.nnet.schedulers.ReduceLROnPlateau
+#    base_lr: !ref <base_lr>
+#    factor: 0.1
+#    patience: 3
+#    lr_min: 1e-6
+#    mode: !ref <sch_mode>
 
 # Logging + checkpoints
 train_logger: !new:speechbrain.utils.train_logger.FileTrainLogger

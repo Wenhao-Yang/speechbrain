@@ -654,7 +654,7 @@ class ThinResNet(nn.Module):
 
     def __init__(self, resnet_size=34, block_type='basic', expansion=1, channels=[16, 32, 64, 128],
                  input_len=300, inst_norm=True, input_dim=257, kernel_size=5, stride=1, padding=2,
-                 dropout_p=0.0, embedding_size=128, fast='None', time_dim=1, avg_size=4,
+                 dropout_p=0.0, embedding_size=128, fast='none1', time_dim=1, avg_size=4,
                  encoder_type='STAP', zero_init_residual=False, groups=1, width_per_group=64,
                  filter=None, replace_stride_with_dilation=None, downsample=None,
                  mask='None', mask_len=[5, 10], scale=0.2, weight_p=0.1,
