@@ -1,0 +1,1356 @@
+#!/usr/bin/env python
+# encoding: utf-8
+"""
+@Author: yangwenhao
+@Contact: 874681044@qq.com
+@Software: PyCharm
+@File: ResNet.py
+@Time: 2022/4/14 23:50
+@Overview:
+"""
+import pdb
+import torch
+import torch.nn.functional as F
+from torch import nn
+from torchvision.models.resnet import BasicBlock
+from torchvision.models.resnet import Bottleneck
+
+
+from speechbrain.lobes.models.filterlayer import TimeFreqMaskLayer, FreqMaskLayer, CBAM, SqueezeExcitation
+from speechbrain.lobes.models.pooling import StatisticPooling, SelfAttentionPooling, SelfAttentionPooling_v2, \
+    AttentionStatisticPooling, \
+    AttentionStatisticPooling_v2
+
+from typing import Type, Any, Callable, Union, List, Optional
+from torch import Tensor
+
+
+def conv1x1(in_planes, out_planes, stride=1):
+    """1x1 convolution"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+
+
+def conv3x3(in_planes, out_planes, stride=1):
+    """1x1 convolution"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, padding=1,
+                     stride=stride, bias=False)
+
+
+def conv5x5(in_planes, out_planes, stride=2, groups=1):
+    """1x1 convolution"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=5, padding=2,
+                     stride=stride, bias=False, groups=groups)
+
+
+class SEBasicBlock(nn.Module):
+    expansion = 1
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
+                 base_width=64, dilation=1, norm_layer=None, reduction_ratio=4):
+        super(SEBasicBlock, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        if groups != 1 or base_width != 64:
+            raise ValueError('BasicBlock only supports groups=1 and base_width=64')
+        if dilation > 1:
+            raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+        self.conv1 = conv3x3(inplanes, planes, stride)
+        self.bn1 = norm_layer(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = norm_layer(planes)
+        self.downsample = downsample
+        self.stride = stride
+        self.reduction_ratio = reduction_ratio
+
+        # Squeeze-and-Excitation
+        self.se_layer = SqueezeExcitation(inplanes=planes, reduction_ratio=reduction_ratio)
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out = self.se_layer(out)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
+class SEBasicBlock_v2(nn.Module):
+    expansion = 1
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
+                 base_width=64, dilation=1, norm_layer=None, reduction_ratio=2, **kwargs):
+        super(SEBasicBlock_v2, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        if groups != 1 or base_width != 64:
+            raise ValueError('BasicBlock only supports groups=1 and base_width=64')
+        if dilation > 1:
+            raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+        if stride == 1:
+            self.conv1 = conv3x3(inplanes, planes, stride)
+        elif stride == 2:
+            self.conv1 = conv5x5(inplanes, planes, stride)
+
+        self.bn1 = norm_layer(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = norm_layer(planes)
+        self.downsample = downsample
+        self.stride = stride
+        self.reduction_ratio = reduction_ratio
+
+        # Squeeze-and-Excitation
+        self.se_layer = SqueezeExcitation(inplanes=planes, reduction_ratio=reduction_ratio)
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out = self.se_layer(out)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
+class CBAMBlock(nn.Module):
+    expansion = 1
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
+                 base_width=64, dilation=1, norm_layer=None, reduction_ratio=16):
+        super(CBAMBlock, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        if groups != 1 or base_width != 64:
+            raise ValueError('BasicBlock only supports groups=1 and base_width=64')
+        if dilation > 1:
+            raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+        self.conv1 = conv3x3(inplanes, planes, stride)
+        self.bn1 = norm_layer(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = norm_layer(planes)
+        self.downsample = downsample
+        self.stride = stride
+        self.reduction_ratio = reduction_ratio
+
+        # Squeeze-and-Excitation
+        self.CBAM_layer = CBAM(planes, planes)
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out = self.CBAM_layer(out)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
+class CBAMBlock_v2(nn.Module):
+    expansion = 1
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
+                 base_width=64, dilation=1, norm_layer=None, reduction_ratio=2, **kwargs):
+        super(CBAMBlock_v2, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        if groups != 1 or base_width != 64:
+            raise ValueError('BasicBlock only supports groups=1 and base_width=64')
+        if dilation > 1:
+            raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+        if stride == 1:
+            self.conv1 = conv3x3(inplanes, planes, stride)
+        elif stride == 2:
+            self.conv1 = conv5x5(inplanes, planes, stride)
+
+        self.bn1 = norm_layer(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = norm_layer(planes)
+        self.downsample = downsample
+        self.stride = stride
+        self.reduction_ratio = reduction_ratio
+
+        # Squeeze-and-Excitation
+        self.CBAM_layer = CBAM(planes, planes)
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out = self.CBAM_layer(out)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
+class Res2Conv2dReluBn(nn.Module):
+    '''
+    in_channels == out_channels == channels
+    '''
+
+    def __init__(self, channels, kernel_size=1, padding=0, dilation=1, stride=1, bias=False, scale=4):
+        super().__init__()
+        assert channels % scale == 0, "{} % {} != 0".format(channels, scale)
+        self.scale = scale
+        self.width = channels // scale
+        self.nums = scale if scale == 1 else scale - 1
+
+        self.convs = []
+        self.bns = []
+        for i in range(self.nums):
+            self.convs.append(nn.Conv2d(self.width, self.width, kernel_size, stride, padding, dilation, bias=bias))
+            self.bns.append(nn.BatchNorm2d(self.width))
+        self.convs = nn.ModuleList(self.convs)
+        self.bns = nn.ModuleList(self.bns)
+
+    def forward(self, x):
+        out = []
+        spx = torch.split(x, self.width, 1)
+        for i in range(self.nums):
+            if i == 0:
+                sp = spx[i]
+            else:
+                sp = sp + spx[i]
+            # Order: conv -> relu -> bn
+            sp = self.convs[i](sp)
+            sp = self.bns[i](F.relu(sp))
+            out.append(sp)
+        if self.scale != 1:
+            out.append(spx[self.nums])
+        out = torch.cat(out, dim=1)
+        return out
+
+
+class Conv2dReluBn(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size=1, stride=1, padding=0, dilation=1, bias=False):
+        super().__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, bias=bias)
+        self.bn = nn.BatchNorm2d(out_channels)
+
+    def forward(self, x):
+        return self.bn(F.relu(self.conv(x)))
+
+
+''' SE-Res2Block.
+    Note: residual connection is implemented in the ECAPA_TDNN model, not here.
+'''
+class SE_Res2Block(nn.Module):
+
+    def __init__(self, inplanes, planes, kernel_size=3, padding=1, stride=1, dilation=1,
+                 scale=8, reduction_ratio=2, downsample=None, **kwargs):
+        super(SE_Res2Block, self).__init__()
+        self.scale = scale
+        self.stride = stride
+
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+        self.downsample = downsample
+        self.conv1 = Conv2dReluBn(inplanes, planes, kernel_size=1, stride=stride, padding=0)
+        self.conv2 = Res2Conv2dReluBn(planes, kernel_size, padding, dilation, stride=1, scale=scale)
+        self.conv3 = Conv2dReluBn(planes, planes, kernel_size=1, stride=1, padding=0)
+
+        # Squeeze-and-Excitation
+        self.se_layer = SqueezeExcitation(inplanes=planes, reduction_ratio=reduction_ratio)
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.conv2(out)
+        out = self.conv3(out)
+
+        out = self.se_layer(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        # pdb.set_trace()
+        out += identity
+        out = F.relu(out)
+
+        return out
+
+
+class Res2Block(nn.Module):
+
+    def __init__(self, inplanes, planes, kernel_size=3, padding=1, stride=1, dilation=1,
+                 scale=8, reduction_ratio=2, downsample=None, **kwargs):
+        super(Res2Block, self).__init__()
+        self.scale = scale
+        self.stride = stride
+
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+        self.downsample = downsample
+        self.conv1 = Conv2dReluBn(inplanes, planes, kernel_size=1, stride=stride, padding=0)
+        self.conv2 = Res2Conv2dReluBn(planes, kernel_size, padding, dilation, stride=1, scale=scale)
+        self.conv3 = Conv2dReluBn(planes, planes, kernel_size=1, stride=1, padding=0)
+
+        # Squeeze-and-Excitation
+        # self.se_layer = SqueezeExcitation(inplanes=planes, reduction_ratio=reduction_ratio)
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.conv2(out)
+        out = self.conv3(out)
+
+        # out = self.se_layer(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = F.relu(out)
+
+        return out
+
+
+class Block3x3(nn.Module):
+    expansion = 1
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None):
+        super(Block3x3, self).__init__()
+        self.conv1 = conv3x3(inplanes, planes)
+        self.bn1 = nn.BatchNorm2d(planes)
+
+        self.conv2 = conv3x3(planes, planes, stride)
+        self.bn2 = nn.BatchNorm2d(planes)
+
+        self.conv3 = conv3x3(planes, planes)
+        self.bn3 = nn.BatchNorm2d(planes)
+        self.relu = nn.ReLU(inplace=True)
+
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
+class InstBlock3x3(nn.Module):
+    expansion = 1
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None):
+        super(InstBlock3x3, self).__init__()
+        self.conv1 = conv3x3(inplanes, planes)
+        self.bn1 = nn.InstanceNorm2d(planes)
+
+        self.conv2 = conv3x3(planes, planes, stride)
+        self.bn2 = nn.InstanceNorm2d(planes)
+
+        self.conv3 = conv3x3(planes, planes)
+        self.bn3 = nn.InstanceNorm2d(planes)
+        self.relu = nn.ReLU(inplace=True)
+
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
+class VarSizeConv(nn.Module):
+
+    def __init__(self, inplanes, planes, stride=1, kernel_size=[3, 5, 9]):
+        super(VarSizeConv, self).__init__()
+        self.stide = stride
+
+        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=kernel_size[0], stride=stride, padding=1)
+        self.bn1 = nn.InstanceNorm2d(planes)
+
+        self.conv2 = nn.Conv2d(inplanes, planes, kernel_size=kernel_size[1], stride=stride, padding=2)
+        self.bn2 = nn.InstanceNorm2d(planes)
+
+        self.conv3 = nn.Conv2d(inplanes, planes, kernel_size=kernel_size[2], stride=stride, padding=4)
+        self.bn3 = nn.InstanceNorm2d(planes)
+
+        self.avg = nn.AvgPool2d(kernel_size=int(stride * 2 + 1), stride=stride, padding=stride)
+
+    def forward(self, x):
+        x1 = self.conv1(x)
+        x1 = self.bn1(x1)
+
+        x2 = self.conv2(x)
+        x2 = self.bn2(x2)
+
+        x3 = self.conv3(x)
+        x3 = self.bn3(x3)
+
+        if self.stide != 1:
+            x = self.avg(x)
+
+        return torch.cat([x, x1, x2, x3], dim=1)
+        # return torch.cat([x, x1, x2, x3], dim=1)
+
+
+class SimpleResNet(nn.Module):
+
+    def __init__(self, block=BasicBlock,
+                 num_classes=1000,
+                 embedding_size=128,
+                 zero_init_residual=False,
+                 groups=1,
+                 width_per_group=64,
+                 replace_stride_with_dilation=None,
+                 norm_layer=None, **kwargs):
+        super(SimpleResNet, self).__init__()
+        layers = [3, 4, 6, 3]
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        self._norm_layer = norm_layer
+        self.embedding_size=embedding_size
+        self.inplanes = 16
+        self.dilation = 1
+        num_filter = [16, 32, 64, 128]
+
+        if replace_stride_with_dilation is None:
+            # each element in the tuple indicates if we should replace
+            # the 2x2 stride with a dilated convolution instead
+            replace_stride_with_dilation = [False, False, False]
+        if len(replace_stride_with_dilation) != 3:
+            raise ValueError("replace_stride_with_dilation should be None "
+                             "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
+        self.groups = groups
+        self.base_width = width_per_group
+        self.conv1 = nn.Conv2d(1, num_filter[0], kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = norm_layer(num_filter[0])
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=1, padding=1)
+
+        # num_filter = [16, 32, 64, 128]
+
+        self.layer1 = self._make_layer(block, num_filter[0], layers[0])
+        self.layer2 = self._make_layer(block, num_filter[1], layers[1], stride=2)
+        self.layer3 = self._make_layer(block, num_filter[2], layers[2], stride=2)
+        self.layer4 = self._make_layer(block, num_filter[3], layers[3], stride=2)
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc1 = nn.Linear(128 * block.expansion, embedding_size)
+        # self.norm = self.l2_norm(num_filter[3])
+        self.alpha = 12
+
+        self.fc2 = nn.Linear(embedding_size, num_classes)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.normal(m.weight, mean=0., std=1.)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant(m.weight, 1)
+                nn.init.constant(m.bias, 0)
+
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        if zero_init_residual:
+            for m in self.modules():
+                if isinstance(m, Bottleneck):
+                    nn.init.constant(m.bn3.weight, 0)
+                elif isinstance(m, BasicBlock):
+                    nn.init.constant(m.bn2.weight, 0)
+
+    def l2_norm(self, input):
+        input_size = input.size()
+        buffer = torch.pow(input, 2)
+
+        normp = torch.sum(buffer, 1).add_(1e-10)
+        norm = torch.sqrt(normp)
+
+        _output = torch.div(input, norm.view(-1, 1).expand_as(input))
+        output = _output.view(input_size)
+
+        return output
+
+    def _make_layer(self, block, planes, blocks, stride=1):
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                conv1x1(self.inplanes, planes * block.expansion, stride),
+                nn.BatchNorm2d(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride, downsample))
+        self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes))
+
+        return nn.Sequential(*layers)
+
+    def _forward(self, x):
+        # pdb.set_trace()
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        # print(x.shape)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        # pdb.set_trace()
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc1(x)
+
+        x = self.l2_norm(x)
+        embeddings = x * self.alpha
+
+        x = self.fc2(embeddings)
+
+        return x, embeddings
+
+    # Allow for accessing forward method in a inherited class
+    forward = _forward
+
+
+# Analysis of Length Normalization in End-to-End Speaker Verification System
+# https://arxiv.org/abs/1806.03209
+
+class BasicBlock_v2(nn.Module):
+    expansion: int = 1
+
+    def __init__(
+            self,
+            inplanes: int,
+            planes: int,
+            stride: int = 1,
+            downsample: Optional[nn.Module] = None,
+            groups: int = 1,
+            base_width: int = 64,
+            dilation: int = 1,
+            norm_layer: Optional[Callable[..., nn.Module]] = None
+    ) -> None:
+        super(BasicBlock_v2, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        if groups != 1 or base_width != 64:
+            raise ValueError('BasicBlock only supports groups=1 and base_width=64')
+        if dilation > 1:
+            raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+        if stride == 1:
+            self.conv1 = conv3x3(inplanes, planes, stride)
+        elif stride == 2:
+            self.conv1 = conv5x5(inplanes, planes, stride)
+        self.bn1 = norm_layer(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = norm_layer(planes)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
+class ThinResNet(nn.Module):
+
+    def __init__(self, resnet_size=34, block_type='basic', expansion=1, channels=[16, 32, 64, 128],
+                 input_len=300, inst_norm=True, input_dim=257, kernel_size=5, stride=1, padding=2,
+                 dropout_p=0.0, embedding_size=128, fast='None', time_dim=1, avg_size=4,
+                 encoder_type='STAP', zero_init_residual=False, groups=1, width_per_group=64,
+                 filter=None, replace_stride_with_dilation=None, downsample=None,
+                 mask='None', mask_len=[5, 10], scale=0.2, weight_p=0.1,
+                 gain_layer=False, **kwargs):
+        super(ThinResNet, self).__init__()
+        resnet_type = {8: [1, 1, 1, 0],
+                       10: [1, 1, 1, 1],
+                       18: [2, 2, 2, 2],
+                       34: [3, 4, 6, 3],
+                       50: [3, 4, 6, 3],
+                       101: [3, 4, 23, 3]}
+
+        layers = resnet_type[resnet_size]
+        freq_dim = avg_size  # default 4
+        time_dim = time_dim  # default 1
+        self.input_len = input_len
+        self.input_dim = input_dim
+        self.inst_norm = inst_norm
+        self.filter = filter
+        self._norm_layer = nn.BatchNorm2d
+        self.embedding_size = embedding_size
+        self.dropout_p = dropout_p
+        self.gain_layer = gain_layer
+        self.mask = mask
+        self.scale = scale
+        self.weight_p = weight_p
+
+        self.dilation = 1
+        self.fast = str(fast)
+        self.num_filter = channels  # [16, 32, 64, 128]
+        self.inplanes = self.num_filter[0]
+        self.downsample = str(downsample)
+
+        if block_type == "seblock":
+            block = SEBasicBlock
+            # block.reduction_ratio = red_ratio
+        elif block_type == "seblock_v2":
+            block = SEBasicBlock_v2
+        elif block_type == 'cbam':
+            block = CBAMBlock
+        elif block_type == 'cbam_v2':
+            block = CBAMBlock_v2
+        elif block_type in ['basic', 'None']:
+            block = BasicBlock if resnet_size < 50 else Bottleneck
+        elif block_type == 'basic_v2':
+            block = BasicBlock_v2
+        elif block_type == 'se2block':
+            block = SE_Res2Block
+        elif block_type == 'res2block':
+            block = Res2Block
+
+        block.expansion = expansion
+        # num_filter = [32, 64, 128, 256]
+
+        if replace_stride_with_dilation is None:
+            # each element in the tuple indicates if we should replace
+            # the 2x2 stride with a dilated convolution instead
+            replace_stride_with_dilation = [False, False, False]
+        if len(replace_stride_with_dilation) != 3:
+            raise ValueError("replace_stride_with_dilation should be None "
+                             "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
+        self.groups = groups
+        self.base_width = width_per_group
+
+
+        if self.mask == "freq":
+            self.mask = FreqMaskLayer(mask_len=mask_len[0])
+        elif self.mask == "both":
+            self.mask_layer = TimeFreqMaskLayer(mask_len=mask_len)
+        # elif self.mask == 'attention':
+        #     self.mask_layer = AttentionweightLayer(input_dim=input_dim, weight=init_weight)
+        # elif self.mask == 'attention2':
+        #     self.mask_layer = AttentionweightLayer_v2(input_dim=input_dim, weight=init_weight)
+        # elif self.mask == 'drop':
+        #     self.mask_layer = DropweightLayer(input_dim=input_dim, dropout_p=self.weight_p,
+        #                                       weight=init_weight, scale=self.scale)
+        # elif self.mask == 'drop2':
+        #     self.mask_layer = DropweightLayer_v2(input_dim=input_dim, dropout_p=self.weight_p,
+        #                                          weight=init_weight, scale=self.scale)
+        # elif self.mask == 'drop3':
+        #     self.mask_layer = DropweightLayer_v3(input_dim=input_dim, dropout_p=self.weight_p,
+        #                                          weight=init_weight, scale=self.scale)
+        else:
+            self.mask_layer = None
+
+        self.conv1 = nn.Conv2d(1, self.num_filter[0], kernel_size=kernel_size, stride=stride, padding=padding)
+        self.bn1 = self._norm_layer(self.num_filter[0])
+        self.relu = nn.ReLU(inplace=True)
+
+        if self.fast.startswith('avp'):
+            # self.maxpool = nn.MaxPool2d(kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+            self.maxpool = nn.AvgPool2d(kernel_size=(3, 3), stride=(1, 2), padding=(1, 1))
+        elif self.fast.startswith('mxp'):
+            self.maxpool = nn.MaxPool2d(kernel_size=(3, 3), stride=(1, 2), padding=(1, 1))
+        else:
+            self.maxpool = None
+
+        self.layer1 = self._make_layer(block, self.num_filter[0], layers[0])
+        self.layer2 = self._make_layer(block, self.num_filter[1], layers[1], stride=2)
+        self.layer3 = self._make_layer(block, self.num_filter[2], layers[2], stride=2)
+
+        if self.fast in ['avp1', 'mxp1', 'none1']:
+            self.layer4 = self._make_layer(block, self.num_filter[3], layers[3], stride=1)
+        else:
+            self.layer4 = self._make_layer(block, self.num_filter[3], layers[3], stride=2)
+
+        # self.gain = GAIN(time=self.input_len, freq=self.input_dim) if self.gain_layer else None
+        self.dropout = nn.Dropout(self.dropout_p)
+        # [64, 128, 37, 8]
+        # self.avgpool = nn.AvgPool2d(kernel_size=(3, 4), stride=(2, 1))
+        # 300 is the length of features
+
+        if encoder_type == 'SAP':
+            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
+            self.encoder = SelfAttentionPooling(input_dim=self.num_filter[3] * block.expansion,
+                                                hidden_dim=int(embedding_size / 2))
+            self.encoder_output = self.num_filter[3] * block.expansion * freq_dim
+        elif encoder_type == 'SAP2':
+            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
+            self.encoder = SelfAttentionPooling_v2(input_dim=self.num_filter[3] * block.expansion * freq_dim,
+                                                   hidden_dim=int(embedding_size / 2))
+            self.encoder_output = self.num_filter[3] * block.expansion * freq_dim
+        elif encoder_type in ['ASTP', 'SASP']:
+            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
+            self.encoder = AttentionStatisticPooling(input_dim=self.num_filter[3] * block.expansion * freq_dim,
+                                                     hidden_dim=int(embedding_size / 2))
+            self.encoder_output = self.num_filter[3] * 2 * block.expansion * freq_dim
+        elif encoder_type in ['ASTP2', 'SASP2']:
+            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
+            self.encoder = AttentionStatisticPooling_v2(input_dim=self.num_filter[3] * block.expansion * freq_dim,
+                                                        hidden_dim=int(embedding_size / 2))
+            self.encoder_output = self.num_filter[3] * 2 * block.expansion * freq_dim
+        elif encoder_type == 'STAP':
+            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
+            self.encoder = StatisticPooling(input_dim=self.num_filter[3] * freq_dim * block.expansion)
+            self.encoder_output = self.num_filter[3] * freq_dim * 2 * block.expansion
+        else:
+            self.avgpool = nn.AdaptiveAvgPool2d((time_dim, freq_dim))
+            self.encoder = None
+            self.encoder_output = self.num_filter[3] * freq_dim * time_dim * block.expansion
+
+        self.fc1 = nn.Sequential(
+            nn.Linear(self.encoder_output, embedding_size),
+            nn.BatchNorm1d(embedding_size)
+        )
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.normal_(m.weight, mean=0., std=1.)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+        # Zero-initialize the last BN in each residual branch, so that the residual branch
+        # starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        if zero_init_residual:
+            for m in self.modules():
+                if isinstance(m, Bottleneck):
+                    nn.init.constant_(m.bn3.weight, 0)
+                elif isinstance(m, BasicBlock):
+                    nn.init.constant_(m.bn2.weight, 0)
+
+    def _make_layer(self, block, planes, blocks, stride=1):
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            if self.downsample in ['None', 'k1']:
+                downsample = nn.Sequential(
+                    conv1x1(self.inplanes, planes * block.expansion, stride),
+                    nn.BatchNorm2d(planes * block.expansion),
+                )
+            elif self.downsample == 'k1avg':
+                downsample = nn.Sequential(
+                    nn.AvgPool2d(kernel_size=3, stride=stride, padding=1),
+                    conv1x1(self.inplanes, planes * block.expansion, 1),
+                    nn.BatchNorm2d(planes * block.expansion),
+                )
+            elif self.downsample == 'k3':
+                downsample = nn.Sequential(
+                    conv3x3(self.inplanes, planes * block.expansion, stride),
+                    nn.BatchNorm2d(planes * block.expansion),
+                )
+            elif self.downsample == 'k5':
+                downsample = nn.Sequential(
+                    conv5x5(self.inplanes, planes * block.expansion, stride),
+                    nn.BatchNorm2d(planes * block.expansion),
+                )
+            elif self.downsample == 'k51':
+                downsample = nn.Sequential(
+                    conv5x5(self.inplanes, planes * block.expansion, stride, groups=self.inplanes),
+                    nn.BatchNorm2d(planes * block.expansion),
+                )
+            elif self.downsample == 'k52':
+                downsample = nn.Sequential(
+                    conv5x5(self.inplanes, planes * block.expansion, stride, groups=int(self.inplanes / 2)),
+                    nn.BatchNorm2d(planes * block.expansion),
+                )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride=stride, downsample=downsample))
+        self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        # pdb.set_trace()
+        # print(x.shape)
+        if len(x.shape) == 3:
+            x = x.unsqueeze(1)
+
+        if self.mask_layer != None:
+            x = self.mask_layer(x)
+
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        if self.maxpool != None:
+            x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        # print(x.shape)
+
+        if self.dropout_p > 0:
+            x = self.dropout(x)
+
+        x = self.avgpool(x)
+        if self.encoder != None:
+            x = self.encoder(x)
+
+        x = x.view(x.size(0), -1)
+        x = self.fc1(x)
+
+        return x
+
+
+
+class ResNet(nn.Module):
+
+    def __init__(self, resnet_size=18, embedding_size=512, block=BasicBlock,
+                 channels=[64, 128, 256, 512], num_classes=1000,
+                 avg_size=4, zero_init_residual=False, **kwargs):
+        super(ResNet, self).__init__()
+
+        resnet_layer = {10: [1, 1, 1, 1],
+                        18: [2, 2, 2, 2],
+                        34: [3, 4, 6, 3],
+                        50: [3, 4, 6, 3],
+                        101: [3, 4, 23, 3]}
+
+        layers = resnet_layer[resnet_size]
+        self.layers = layers
+
+        self.avg_size = avg_size
+        self.channels = channels
+        self.inplanes = self.channels[0]
+        self.conv1 = nn.Conv2d(1, self.channels[0], kernel_size=5, stride=2, padding=2, bias=False)
+        self.bn1 = nn.BatchNorm2d(self.channels[0])
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+
+        self.layer1 = self._make_layer(block, self.channels[0], layers[0])
+        self.layer2 = self._make_layer(block, self.channels[1], layers[1], stride=2)
+        self.layer3 = self._make_layer(block, self.channels[2], layers[2], stride=2)
+        self.layer4 = self._make_layer(block, self.channels[3], layers[3], stride=2)
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, avg_size))
+
+        if self.layers[3] == 0:
+            self.fc1 = nn.Sequential(
+                nn.Linear(self.channels[2] * avg_size, embedding_size),
+                nn.BatchNorm1d(embedding_size)
+            )
+        else:
+            self.fc1 = nn.Sequential(
+                nn.Linear(self.channels[3] * avg_size, embedding_size),
+                nn.BatchNorm1d(embedding_size)
+            )
+
+        self.classifier = nn.Linear(embedding_size, num_classes)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+        # Zero-initialize the last BN in each residual branch, so that the residual
+        # branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        if zero_init_residual:
+            for m in self.modules():
+                if isinstance(m, Bottleneck):
+                    nn.init.constant_(m.bn3.weight, 0)
+                elif isinstance(m, BasicBlock):
+                    nn.init.constant_(m.bn2.weight, 0)
+
+    def _make_layer(self, block, planes, blocks, stride=1):
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                conv1x1(self.inplanes, planes * block.expansion, stride),
+                nn.BatchNorm2d(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride, downsample))
+        self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+
+        if self.layers[3] != 0:
+            x = self.layer4(x)
+
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+
+        feat = self.fc1(x)
+        logits = self.classifier(feat)
+
+        return logits, feat
+
+# model = SimpleResNet(block=BasicBlock, layers=[3, 4, 6, 3])
+# input = torch.torch.randn(128,1,400,64)
+# x_vectors = model.pre_forward(input)
+# outputs = model(x_vectors)
+# print('hello')
+
+# M. Hajibabaei and D. Dai, “Unified hypersphere embedding for speaker recognition,”
+# arXiv preprint arXiv:1807.08312, 2018.
+
+class ResNet20(nn.Module):
+    def __init__(self, num_classes=1000, embedding_size=128, dropout_p=0.0,
+                 block=BasicBlock, input_frames=300, **kwargs):
+        super(ResNet20, self).__init__()
+        self.dropout_p = dropout_p
+        self.inplanes = 1
+        self.layer1 = self._make_layer(Block3x3, planes=64, blocks=1, stride=2)
+
+        self.inplanes = 64
+        self.layer2 = self._make_layer(Block3x3, planes=128, blocks=1, stride=2)
+
+        self.inplanes = 128
+        self.layer3 = self._make_layer(BasicBlock, 128, 1)
+
+        self.inplanes = 128
+        self.layer4 = self._make_layer(Block3x3, planes=256, blocks=1, stride=2)
+
+        self.inplanes = 256
+        self.layer5 = self._make_layer(BasicBlock, 256, 3)
+
+        self.inplanes = 256
+        self.layer6 = self._make_layer(Block3x3, planes=512, blocks=1, stride=2)
+
+        self.inplanes = 512
+        self.avgpool = nn.AdaptiveAvgPool2d((1, None))
+        self.dropout = nn.Dropout(p=dropout_p)
+        self.fc1 = nn.Sequential(
+            nn.Linear(17 * self.inplanes, embedding_size),
+            nn.BatchNorm1d(embedding_size)
+        )
+        self.classifier = nn.Linear(embedding_size, num_classes)
+
+    def _make_layer(self, block, planes, blocks, stride=1):
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                conv1x1(self.inplanes, planes * block.expansion, stride),
+                nn.BatchNorm2d(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride, downsample))
+        self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.layer5(x)
+        x = self.layer6(x)
+
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+
+        if self.dropout_p != 0:
+            x = self.dropout(x)
+
+        feat = self.fc1(x)
+
+        logits = self.classifier(feat)
+
+        return logits, feat
+
+
+class LocalResNet(nn.Module):
+    """
+    Define the ResNet model with A-softmax and AM-softmax loss.
+    Added dropout as https://github.com/nagadomi/kaggle-cifar10-torch7 after average pooling and fc layer.
+    """
+
+    def __init__(self, embedding_size, num_classes, block_type='basic',
+                 input_dim=161, input_len=300, gain_layer=False, init_weight='mel',
+                 relu_type='relu', resnet_size=8, channels=[64, 128, 256], dropout_p=0., encoder_type='None',
+                 input_norm=None, alpha=12, stride=2, transform=False, time_dim=1, fast=False,
+                 avg_size=4, kernal_size=5, padding=2, filter=None, mask='None', mask_len=[5, 20], **kwargs):
+
+        super(LocalResNet, self).__init__()
+        resnet_type = {8: [1, 1, 1, 0],
+                       10: [1, 1, 1, 1],
+                       14: [2, 2, 2, 0],
+                       18: [2, 2, 2, 2],
+                       34: [3, 4, 6, 3],
+                       50: [3, 4, 6, 3],
+                       101: [3, 4, 23, 3]}
+
+        layers = resnet_type[resnet_size]
+
+        if block_type == "seblock":
+            block = SEBasicBlock
+        elif block_type == 'cbam':
+            block = CBAMBlock
+        else:
+            block = BasicBlock
+
+        self.input_len = input_len
+        self.input_dim = input_dim
+
+        self.alpha = alpha
+        self.layers = layers
+        self.dropout_p = dropout_p
+        self.transform = transform
+        self.fast = fast
+        self.mask = mask
+        self.relu_type = relu_type
+        self.embedding_size = embedding_size
+        self.gain_layer = gain_layer
+        #
+        if self.relu_type == 'relu6':
+            self.relu = nn.ReLU6(inplace=True)
+        elif self.relu_type == 'leakyrelu':
+            self.relu = nn.LeakyReLU()
+        elif self.relu_type == 'relu':
+            self.relu = nn.ReLU(inplace=True)
+
+        self.input_norm = input_norm
+        self.input_len = input_len
+        self.filter = filter
+
+        if self.filter == 'Avg':
+            self.filter_layer = nn.AvgPool2d(kernel_size=(1, 5), stride=(1, 2))
+        else:
+            self.filter_layer = None
+
+        if self.mask == "freq":
+            self.mask = FreqMaskLayer(mask_len=mask_len[0])
+        elif self.mask == "both":
+            self.mask_layer = TimeFreqMaskLayer(mask_len=mask_len)
+        # elif self.mask == 'drop':
+        #     self.mask_layer = DropweightLayer(dropout_p=0.25)
+        # elif self.mask == 'gau_noise':
+        #     self.mask_layer = GaussianNoiseLayer(dropout_p=0.01)
+        # elif self.mask == 'mus_noise':
+        #     self.mask_layer = MusanNoiseLayer(snr=15)
+        # elif self.mask == 'attention':
+        #     self.mask_layer = AttentionweightLayer(input_dim=input_dim, weight=init_weight)
+        # elif self.mask == 'attention2':
+        #     self.mask_layer = AttentionweightLayer_v2(input_dim=input_dim, weight=init_weight)
+        # elif self.mask == 'attention3':
+        #     self.mask_layer = AttentionweightLayer_v3(input_dim=input_dim, weight=init_weight)
+        else:
+            self.mask_layer = None
+
+        self.inplanes = channels[0]
+        self.conv1 = nn.Conv2d(1, channels[0], kernel_size=kernal_size, stride=stride, padding=padding)
+        self.bn1 = nn.BatchNorm2d(channels[0])
+        if self.fast.startswith('avp'):
+            # self.maxpool = nn.MaxPool2d(kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+            # self.maxpool = nn.AvgPool2d(kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+            self.maxpool = nn.Sequential(
+                nn.Conv2d(channels[0], channels[0], kernel_size=1, stride=1),
+                nn.ReLU(),
+                nn.BatchNorm2d(channels[0]),
+                nn.AvgPool2d(kernel_size=3, stride=2)
+            )
+        else:
+            self.maxpool = None
+        # self.maxpool = nn.MaxPool2d(kernel_size=(3, 1), stride=(2, 1), padding=(1, 0))
+        self.layer1 = self._make_layer(block, channels[0], layers[0])
+
+        self.inplanes = channels[1]
+        self.conv2 = nn.Conv2d(channels[0], channels[1], kernel_size=(5, 5), stride=2,
+                               padding=padding, bias=False)
+        self.bn2 = nn.BatchNorm2d(channels[1])
+        self.layer2 = self._make_layer(block, channels[1], layers[1])
+
+        self.inplanes = channels[2]
+        self.conv3 = nn.Conv2d(channels[1], channels[2], kernel_size=(5, 5), stride=2,
+                               padding=padding, bias=False)
+        self.bn3 = nn.BatchNorm2d(channels[2])
+        self.layer3 = self._make_layer(block, channels[2], layers[2])
+
+        if layers[3] != 0:
+            assert len(channels) == 4
+            self.inplanes = channels[3]
+            stride = 1 if self.fast else 2
+            self.conv4 = nn.Conv2d(channels[2], channels[3], kernel_size=(5, 5), stride=stride,
+                                   padding=padding, bias=False)
+            self.bn4 = nn.BatchNorm2d(channels[3])
+            self.layer4 = self._make_layer(block=block, planes=channels[3], blocks=layers[3])
+
+        # self.gain = GAIN(time=self.input_len, freq=self.input_dim) if self.gain_layer else None
+        self.dropout = nn.Dropout(self.dropout_p)
+
+        last_conv_chn = channels[-1]
+        freq_dim = avg_size
+
+        if encoder_type == 'SAP':
+            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
+            self.encoder = SelfAttentionPooling(input_dim=last_conv_chn * freq_dim, hidden_dim=int(embedding_size / 2))
+            self.encoder_output = last_conv_chn * freq_dim
+        elif encoder_type == 'SAP2':
+            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
+            self.encoder = SelfAttentionPooling_v2(input_dim=last_conv_chn * freq_dim,
+                                                   hidden_dim=int(embedding_size / 2))
+            self.encoder_output = last_conv_chn * freq_dim
+        elif encoder_type == 'SASP':
+            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
+            self.encoder = AttentionStatisticPooling(input_dim=last_conv_chn, hidden_dim=int(embedding_size / 2))
+            self.encoder_output = last_conv_chn * 2 * freq_dim
+        elif encoder_type == 'SASP2':
+            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
+            self.encoder = AttentionStatisticPooling_v2(input_dim=last_conv_chn, hidden_dim=int(embedding_size / 2))
+            self.encoder_output = last_conv_chn * 2 * freq_dim
+        elif encoder_type == 'STAP':
+            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
+            self.encoder = StatisticPooling(input_dim=last_conv_chn * freq_dim)
+            self.encoder_output = last_conv_chn * freq_dim * 2
+        else:
+            self.avgpool = nn.AdaptiveAvgPool2d((time_dim, freq_dim))
+            self.encoder = None
+            self.encoder_output = last_conv_chn * freq_dim * time_dim
+
+        # self.fc1 = nn.Sequential(
+        #     nn.Linear(self.encoder_output, embedding_size),
+        #     nn.ReLU(),
+        #     nn.BatchNorm1d(embedding_size)
+        # )
+
+        # self.fc1 = nn.Sequential(
+        #     nn.Linear(self.encoder_output, embedding_size),
+        #     nn.BatchNorm1d(embedding_size)
+        # )
+        self.fc = nn.Linear(self.encoder_output, embedding_size)
+
+        for m in self.modules():  # 对于各层参数的初始化
+            if isinstance(m, nn.Conv2d):  # 以2/n的开方为标准差，做均值为0的正态分布
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                # m.weight.data.normal_(0, math.sqrt(2. / n))
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.GroupNorm)):  # weight设置为1，bias为0
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+    def _make_layer(self, block, planes, blocks, stride=1):
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                conv1x1(self.inplanes, planes * block.expansion, stride),
+                nn.BatchNorm2d(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride, downsample))
+        self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+
+        if self.mask_layer != None:
+            x = self.mask_layer(x)
+
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        if self.maxpool != None:
+            x = self.maxpool(x)
+        x = self.layer1(x)
+
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu(x)
+        x = self.layer2(x)
+
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = self.relu(x)
+        x = self.layer3(x)
+
+        if self.layers[3] != 0:
+            x = self.conv4(x)
+            x = self.bn4(x)
+            x = self.relu(x)
+            x = self.layer4(x)
+
+        if self.dropout_p > 0:
+            x = self.dropout(x)
+
+        x = self.avgpool(x)
+        if self.encoder != None:
+            x = self.encoder(x)
+
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+
+        return x
+
+class Classifier(torch.nn.Module):
+    """This class implements the cosine similarity on the top of features.
+
+    Arguments
+    ---------
+    device : str
+        Device used, e.g., "cpu" or "cuda".
+    lin_blocks : int
+        Number of linear layers.
+    lin_neurons : int
+        Number of neurons in linear layers.
+    out_neurons : int
+        Number of classes.
+
+    Example
+    -------
+    >>> classify = Classifier(input_size=2, lin_neurons=2, out_neurons=2)
+    >>> outputs = torch.tensor([ [1., -1.], [-9., 1.], [0.9, 0.1], [0.1, 0.9] ])
+    >>> outupts = outputs.unsqueeze(1)
+    >>> cos = classify(outputs)
+    >>> (cos < -1.0).long().sum()
+    tensor(0)
+    >>> (cos > 1.0).long().sum()
+    tensor(0)
+    """
+
+    def __init__(
+        self,
+        input_size,
+        device="cpu",
+        lin_blocks=0,
+        lin_neurons=192,
+        out_neurons=1211,
+    ):
+
+        super().__init__()
+
+        # Final Layer
+        self.weight = nn.Parameter(
+            torch.FloatTensor(out_neurons, input_size, device=device)
+        )
+        nn.init.xavier_uniform_(self.weight)
+
+    def forward(self, x):
+        """Returns the output probabilities over speakers.
+
+        Arguments
+        ---------
+        x : torch.Tensor
+            Torch tensor.
+        """
+
+        # Need to be normalized
+        x = F.linear(F.normalize(x.squeeze(1)), F.normalize(self.weight))
+        return x.unsqueeze(1)

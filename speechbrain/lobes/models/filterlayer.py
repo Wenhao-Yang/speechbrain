@@ -377,3 +377,60 @@ class FreqMaskLayer(nn.Module):
 
     def __repr__(self):
         return "FreqMaskLayer(mask_len=%f)" % self.mask_len
+
+
+class CBAM(nn.Module):
+    # input should be like [Batch, channel, time, frequency]
+    def __init__(self, inplanes, planes, time_freq='both'):
+        super(CBAM, self).__init__()
+        self.time_freq = time_freq
+
+        self.cov_t = nn.Conv2d(inplanes, planes, kernel_size=(7, 1), stride=1, padding=(3, 0))
+        self.avg_t = nn.AdaptiveAvgPool2d((None, 1))
+
+        self.cov_f = nn.Conv2d(inplanes, planes, kernel_size=(1, 7), stride=1, padding=(0, 3))
+        self.avg_f = nn.AdaptiveAvgPool2d((1, None))
+
+        self.activation = nn.Sigmoid()
+
+    def forward(self, input):
+        t_output = self.avg_t(input)
+        t_output = self.cov_t(t_output)
+        t_output = self.activation(t_output)
+        t_output = input * t_output
+
+        f_output = self.avg_f(input)
+        f_output = self.cov_f(f_output)
+        f_output = self.activation(f_output)
+        f_output = input * f_output
+
+        output = (t_output + f_output) / 2
+
+        return output
+
+
+class SqueezeExcitation(nn.Module):
+    # input should be like [Batch, channel, time, frequency]
+    def __init__(self, inplanes, reduction_ratio=4):
+        super(SqueezeExcitation, self).__init__()
+        self.reduction_ratio = reduction_ratio
+
+        self.glob_avg = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc1 = nn.Linear(inplanes, max(int(inplanes / self.reduction_ratio), 1))
+        self.relu = nn.ReLU(inplace=True)
+        self.fc2 = nn.Linear(max(int(inplanes / self.reduction_ratio), 1), inplanes)
+        self.activation = nn.Sigmoid()
+
+    def forward(self, input):
+        scale = self.glob_avg(input).squeeze(dim=2).squeeze(dim=2)
+        scale = self.fc1(scale)
+        scale = self.relu(scale)
+        scale = self.fc2(scale)
+        scale = self.activation(scale).unsqueeze(2).unsqueeze(2)
+
+        output = input * scale
+
+        return output
+
+    def __repr__(self):
+        return "SqueezeExcitation(reduction_ratio=%f)" % self.reduction_ratio
