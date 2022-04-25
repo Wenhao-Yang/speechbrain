@@ -128,10 +128,22 @@ class SpeakerBrain(sb.core.Brain):
 
         # Concatenate labels (due to data augmentation)
         if stage == sb.Stage.TRAIN:
+            if len(self.hparams.augment_spk_pipeline) > 0:
+                spks_aug_tot = []
+                for count, augment in enumerate(self.hparams.augment_spk_pipeline):
+                    if isinstance(augment, sb.lobes.augment.TimeDomainSpecAugment):
+                        if len(augment.speed_perturb.speeds) == 1:
+                            if augment.speed_perturb.speeds[0] != 100:
+                                spks_aug_tot.append(spkid + int((count + 1) * self.hparams.out_n_neurons / (
+                                        len(self.hparams.augment_spk_pipeline) + 1)))
+                            else:
+                                spks_aug_tot.append(spkid)
+                spkid = torch.cat(spks_aug_tot, dim=0)
+
             spkid = torch.cat([spkid] * self.n_augment, dim=0)
 
-        print(predictions.shape)
-        print(spkid)
+        # print(predictions.shape)
+        # print(spkid)
         loss = self.hparams.compute_cost(predictions, spkid, lens)
 
         if hasattr(self.hparams, "second_loss_ratio"):
