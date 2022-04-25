@@ -151,7 +151,9 @@ mean_var_norm: !new:speechbrain.processing.features.InputNormalization
 modules:
     compute_features: !ref <compute_features>
     augment_wavedrop: !ref <augment_wavedrop>
-    augment_speed: !ref <augment_speed>
+    #    augment_speed: !ref <augment_speed>
+    augment_speed1: !ref <augment_speed1>
+    augment_speed2: !ref <augment_speed2>
     add_rev: !ref <add_rev>
     add_noise: !ref <add_noise>
     add_rev_noise: !ref <add_rev_noise>
