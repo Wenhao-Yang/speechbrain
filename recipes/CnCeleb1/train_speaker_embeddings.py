@@ -41,7 +41,10 @@ class SpeakerBrain(sb.core.Brain):
 
             # Applying the augmentation pipeline
             wavs_aug_tot = []
+            lens_aug_tot = []
             wavs_aug_tot.append(wavs)
+            lens_aug_tot.append(lens)
+
             for count, augment in enumerate(self.hparams.augment_pipeline):
 
                 # Apply augment
@@ -49,10 +52,10 @@ class SpeakerBrain(sb.core.Brain):
 
                 # Managing speed change
                 if wavs_aug.shape[1] > wavs.shape[1]:
-                    wavs_aug = wavs_aug[:, 0 : wavs.shape[1]]
+                    wavs_aug = wavs_aug[:, 0: wavs.shape[1]]
                 else:
                     zero_sig = torch.zeros_like(wavs)
-                    zero_sig[:, 0 : wavs_aug.shape[1]] = wavs_aug
+                    zero_sig[:, 0: wavs_aug.shape[1]] = wavs_aug
                     wavs_aug = zero_sig
 
                 if self.hparams.concat_augment:
@@ -61,9 +64,20 @@ class SpeakerBrain(sb.core.Brain):
                     wavs = wavs_aug
                     wavs_aug_tot[0] = wavs
 
+                if isinstance(augment, sb.lobes.augment.TimeDomainSpecAugment):
+                    if len(augment.speed_perturb.speeds) == 1:
+                        if augment.speed_perturb.speeds[0] < 100:
+                            lens_aug_tot.append(lens + self.hparams.out_n_neurons)
+                        elif augment.speed_perturb.speeds[0] > 100:
+                            lens_aug_tot.append(lens + 2 * self.hparams.out_n_neurons)
+                        elif augment.speed_perturb.speeds[0] == 100:
+                            lens_aug_tot.append(lens)
+                else:
+                    lens_aug_tot.append(lens)
+
             wavs = torch.cat(wavs_aug_tot, dim=0)
             self.n_augment = len(wavs_aug_tot)
-            lens = torch.cat([lens] * self.n_augment)
+            lens = torch.cat(lens_aug_tot)
 
         # Feature extraction and normalization
         feats = self.modules.compute_features(wavs)

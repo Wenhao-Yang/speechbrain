@@ -9,13 +9,13 @@ __set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 
-output_folder: !ref results/ecapa_augment_epoch30/<seed>_cn1_3s #_dist
+output_folder: !ref results/ecapa_augment_epoch30/<seed>_cn12_sp3 #_dist
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
 # Data files
 data_folder: /home/yangwenhao/dataset/CN-Celeb # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
-#data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
+data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
 
 train_annotation: !ref <save_folder>/train.csv
 valid_annotation: !ref <save_folder>/dev.csv
@@ -58,7 +58,7 @@ right_frames: 0
 deltas: False
 
 # Number of speakers
-out_n_neurons: 797 #797 for c1 1996 for c2, 2793 for c1+c2
+out_n_neurons: 8379 #797 for c1 1996 for c2, 2793 for c1+c2
 
 dataloader_options:
     batch_size: !ref <batch_size>
@@ -90,11 +90,15 @@ epoch_counter: !new:speechbrain.utils.epoch_loop.EpochCounter
 
 augment_wavedrop: !new:speechbrain.lobes.augment.TimeDomainSpecAugment
     sample_rate: !ref <sample_rate>
-    speeds: [100]
+    speeds: [ 100 ]
 
-augment_speed: !new:speechbrain.lobes.augment.TimeDomainSpecAugment
+augment_speed1: !new:speechbrain.lobes.augment.TimeDomainSpecAugment
     sample_rate: !ref <sample_rate>
-    speeds: [95, 100, 105]
+    speeds: [ 90 ]
+
+augment_speed2: !new:speechbrain.lobes.augment.TimeDomainSpecAugment
+    sample_rate: !ref <sample_rate>
+    speeds: [ 110 ]
 
 add_rev: !new:speechbrain.lobes.augment.EnvCorrupt
     openrir_folder: !ref <rir_folder>
@@ -134,7 +138,9 @@ augment_pipeline: [
     !ref <augment_wavedrop>,
     !ref <add_rev>,
     !ref <add_noise>,
-    !ref <add_rev_noise>
+    !ref <add_rev_noise>,
+    !ref <augment_speed1>,
+    !ref <augment_speed2>
 ]
 concat_augment: True
 
