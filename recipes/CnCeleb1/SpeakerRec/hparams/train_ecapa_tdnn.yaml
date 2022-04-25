@@ -9,7 +9,7 @@ __set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 
-output_folder: !ref results/ecapa_augment_epoch30/<seed>_cn12_sp3 #_dist
+output_folder: !ref results/ecapa_1024_epoch30/<seed>_cn12_sp3 #_dist
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
@@ -39,7 +39,7 @@ ckpt_interval_minutes: 15 # save checkpoint every N min
 
 # Training parameters
 number_of_epochs: 30
-batch_size: 32
+batch_size: 16
 lr: 0.001
 base_lr: 0.00000001
 sch_mode: triangular2
@@ -74,7 +74,7 @@ compute_features: !new:speechbrain.lobes.features.Fbank
 
 embedding_model: !new:speechbrain.lobes.models.ECAPA_TDNN.ECAPA_TDNN
     input_size: !ref <n_mels>
-    channels: [512, 512, 512, 512, 1536]
+    channels: [ 1024, 1024, 1024, 1024, 3072 ]
     kernel_sizes: [5, 3, 3, 3, 1]
     dilations: [1, 2, 3, 4, 1]
     attention_channels: 128
@@ -138,10 +138,14 @@ augment_pipeline: [
     !ref <augment_wavedrop>,
     !ref <add_rev>,
     !ref <add_noise>,
-    !ref <add_rev_noise>,
+    !ref <add_rev_noise>
+]
+
+augment_spk_pipeline: [
     !ref <augment_speed1>,
     !ref <augment_speed2>
 ]
+
 concat_augment: True
 
 mean_var_norm: !new:speechbrain.processing.features.InputNormalization
@@ -152,8 +156,8 @@ modules:
     compute_features: !ref <compute_features>
     augment_wavedrop: !ref <augment_wavedrop>
     #    augment_speed: !ref <augment_speed>
-    augment_speed1: !ref <augment_speed1>
-    augment_speed2: !ref <augment_speed2>
+    augment_spk1: !ref <augment_speed1>
+    augment_spk2: !ref <augment_speed2>
     add_rev: !ref <add_rev>
     add_noise: !ref <add_noise>
     add_rev_noise: !ref <add_rev_noise>
