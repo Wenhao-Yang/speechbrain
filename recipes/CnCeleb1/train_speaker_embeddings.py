@@ -67,9 +67,9 @@ class SpeakerBrain(sb.core.Brain):
                 if isinstance(augment, sb.lobes.augment.TimeDomainSpecAugment):
                     if len(augment.speed_perturb.speeds) == 1:
                         if augment.speed_perturb.speeds[0] < 100:
-                            lens_aug_tot.append(lens + self.hparams.out_n_neurons)
+                            lens_aug_tot.append(lens + int(self.hparams.out_n_neurons / 3))
                         elif augment.speed_perturb.speeds[0] > 100:
-                            lens_aug_tot.append(lens + 2 * self.hparams.out_n_neurons)
+                            lens_aug_tot.append(lens + int(2 * self.hparams.out_n_neurons / 3))
                         elif augment.speed_perturb.speeds[0] == 100:
                             lens_aug_tot.append(lens)
                 else:
