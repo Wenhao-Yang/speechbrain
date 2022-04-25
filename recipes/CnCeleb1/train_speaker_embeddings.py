@@ -76,7 +76,7 @@ class SpeakerBrain(sb.core.Brain):
                         lens_aug_tot.append(lens)
 
                 wavs = torch.cat(wavs_aug_tot, dim=0)
-                lens = torch.cat(lens_aug_tot)
+                lens = torch.cat(lens_aug_tot, dim=0)
 
                 wavs_aug_tot = []
                 lens_aug_tot = []
