@@ -131,6 +131,7 @@ class SpeakerBrain(sb.core.Brain):
             spkid = torch.cat([spkid] * self.n_augment, dim=0)
 
         print(predictions.shape)
+        print(spkid)
         loss = self.hparams.compute_cost(predictions, spkid, lens)
 
         if hasattr(self.hparams, "second_loss_ratio"):
