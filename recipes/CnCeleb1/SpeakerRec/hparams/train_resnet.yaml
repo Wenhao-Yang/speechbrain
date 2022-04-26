@@ -9,13 +9,13 @@ __set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 
-output_folder: !ref results/resnet34_augment_epoch30/<seed>_cn1
+output_folder: !ref results/res2net50_se_epoch30/<seed>_cn12
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
 # Data files
 data_folder: /home/yangwenhao/dataset/CN-Celeb # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
-#data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
+data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
 
 train_annotation: !ref <save_folder>/train.csv
 valid_annotation: !ref <save_folder>/dev.csv
@@ -58,7 +58,7 @@ right_frames: 0
 deltas: False
 
 # Number of speakers
-out_n_neurons: 797 #797 for c1 1996 for c2, 2793 for c1+c2
+out_n_neurons: 2793 #797 for c1 1996 for c2, 2793 for c1+c2
 
 dataloader_options:
     batch_size: !ref <batch_size>
@@ -78,12 +78,12 @@ embedding_model: !new:speechbrain.lobes.models.ResNet.ThinResNet
     channels: [ 32, 64, 128, 256 ]
     kernel_size: [ 5, 5 ]
     stride: [ 2, 2 ]
-    avg_size: 5
+    avg_size: 0
     embedding_size: 512
     encoder_type: SAP2
     downsample: k5
-    block_type: cbam
-    resnet_size: 34
+    block_type: se2block
+    resnet_size: 50
     fast: none1
 
 
