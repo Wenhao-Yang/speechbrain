@@ -72,6 +72,10 @@ compute_features: !new:speechbrain.lobes.features.Fbank
     right_frames: !ref <right_frames>
     deltas: !ref <deltas>
 
+#compute_features: !new:speechbrain.lobes.features.Spectrogram
+#    n_fft: 320
+#    win_length: 20
+
 embedding_model: !new:speechbrain.lobes.models.ResNet.ThinResNet
     input_dim: !ref <n_mels>
     mask: None
@@ -144,6 +148,8 @@ augment_pipeline: [
     !ref <add_noise>,
     !ref <add_rev_noise>
 ]
+
+augment_spk_pipeline: [ ]
 concat_augment: True
 
 mean_var_norm: !new:speechbrain.processing.features.InputNormalization

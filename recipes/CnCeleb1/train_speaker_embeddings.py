@@ -128,7 +128,8 @@ class SpeakerBrain(sb.core.Brain):
 
         # Concatenate labels (due to data augmentation)
         if stage == sb.Stage.TRAIN:
-            if len(self.hparams.augment_spk_pipeline) > 0:
+
+            if hasattr(self.hparams, "augment_spk_pipeline") and len(self.hparams.augment_spk_pipeline) > 0:
                 spks_aug_tot = [spkid]
                 for count, augment in enumerate(self.hparams.augment_spk_pipeline):
                     if isinstance(augment, sb.lobes.augment.TimeDomainSpecAugment):
