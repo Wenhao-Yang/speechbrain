@@ -52,7 +52,7 @@ chunk_size: 2.0 # seconds
 random_chunk: True
 
 # Feature parameters
-n_mels: 80
+n_mels: 161
 left_frames: 0
 right_frames: 0
 deltas: False
@@ -66,15 +66,15 @@ dataloader_options:
     num_workers: 4
 
 # Functions
-compute_features: !new:speechbrain.lobes.features.Fbank
-    n_mels: !ref <n_mels>
-    left_frames: !ref <left_frames>
-    right_frames: !ref <right_frames>
-    deltas: !ref <deltas>
+#compute_features: !new:speechbrain.lobes.features.Fbank
+#    n_mels: !ref <n_mels>
+#    left_frames: !ref <left_frames>
+#    right_frames: !ref <right_frames>
+#    deltas: !ref <deltas>
 
-#compute_features: !new:speechbrain.lobes.features.Spectrogram
-#    n_fft: 320
-#    win_length: 20
+compute_features: !new:speechbrain.lobes.features.Spectrogram
+    n_fft: 320
+    win_length: 20
 
 embedding_model: !new:speechbrain.lobes.models.ResNet.ThinResNet
     input_dim: !ref <n_mels>
