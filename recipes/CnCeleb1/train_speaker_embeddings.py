@@ -294,6 +294,7 @@ if __name__ == "__main__":
             "data_folder2": hparams["data_folder2"] if 'data_folder2' in hparams else '',
             "split_ratio": hparams["split_ratio"],  # [90, 10],
             "seg_dur": hparams["sentence_len"],
+            "skip_prep": hparams["skip_prep"],
         },
     )
 
