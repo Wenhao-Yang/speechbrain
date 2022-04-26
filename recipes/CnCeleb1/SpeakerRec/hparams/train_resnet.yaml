@@ -9,7 +9,7 @@ __set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 
-output_folder: !ref results/res2net50_se_epoch30/<seed>_cn12
+output_folder: !ref results/res2net50_se_spect_epoch30/<seed>_cn12
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
