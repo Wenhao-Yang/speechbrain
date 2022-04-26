@@ -82,7 +82,7 @@ embedding_model: !new:speechbrain.lobes.models.ResNet.ThinResNet
     channels: [ 32, 64, 128, 256 ]
     kernel_size: [ 5, 5 ]
     stride: [ 2, 2 ]
-    avg_size: 0
+    avg_size: 10
     embedding_size: 512
     encoder_type: SAP2
     downsample: k5
