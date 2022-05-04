@@ -1,0 +1,127 @@
+# ################################
+# Model: Speaker Verification Baseline
+# Authors: Hwidong Na 2020
+#          Mirco Ravanelli 2020
+# ################################
+
+seed: 1234
+__set_seed: !apply:torch.manual_seed [ !ref <seed> ]
+__set_seed_rand: !apply:random.seed [ !ref <seed> ]
+__set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
+
+# Folders and train_log file
+voxceleb_source: /home/yangwenhao/dataset/CN-Celeb
+data_folder: /home/yangwenhao/dataset/CN-Celeb #!PLACEHOLDER #e.g., /localscratch/voxceleb1
+data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
+output_folder: results/res2net50_se_spect_epoch30/<seed>_cn12
+#    results/ecapa_augment_epoch30/<seed>_cn1_3s
+#    results/wav2_ecapa_augment/1988_epoch30_double
+save_folder: !ref <output_folder>/save_test
+device: 'cuda:0'
+
+# Use the following links for the official voxceleb splits:
+# VoxCeleb1 (cleaned): https://www.robots.ox.ac.uk/~vgg/data/voxceleb/meta/veri_test2.txt
+# VoxCeleb1-H (cleaned): https://www.robots.ox.ac.uk/~vgg/data/voxceleb/meta/list_test_hard2.txt
+# VoxCeleb1-E (cleaned): https://www.robots.ox.ac.uk/~vgg/data/voxceleb/meta/list_test_all2.txt.
+# VoxCeleb1-E and VoxCeleb1-H lists are drawn from the VoxCeleb1 training set.
+# Therefore you cannot use any files in VoxCeleb1 for training if you are using these lists for testing.
+verification_file: /home/yangwenhao/dataset/CN-Celeb/eval/lists/trials.lst
+skip_prep: false
+fast_score: true
+# Here, the pretrained embedding model trained with train_speaker_embeddings.py hparams/train_ecapa_tdnn.yaml
+# is downloaded from the speechbrain HuggingFace repository.
+# However, a local path pointing to a directory containing your checkpoints may also be specified
+# instead (see pretrainer below)
+
+pretrain_path: results/res2net50_se_spect_epoch30/1988_cn12/save/CKPT+2022-05-03+20-32-54+00
+#    results/ecapa_augment_epoch30/1988_cn1_3s/save/CKPT+2022-04-14+10-58-54+00
+#    results/ecapa_augment_epoch30/1988_cn1_dist/save/CKPT+2022-04-13+11-36-14+00
+#    results/wav2_ecapa_augment/1988_epoch30_double/save/CKPT+2022-04-06+06-02-15+00
+#    results/ecapa_augment_epoch30/1988_cn12/save/CKPT+2022-04-04+15-27-15+00
+
+# results/sinc_ecapa_augment/1988_epoch30_double/save/CKPT+2022-04-01+05-18-46+00
+#    results/ecapa_augment_epoch30/1988/save/CKPT+2022-03-30+05-41-13+00
+#/embedding_model.ckpt
+
+# csv files
+#train_dir: results/sinc_ecapa_augment/1988_epoch30_double/save
+train_data: !ref <save_folder>/train.csv
+enrol_data: !ref <save_folder>/enrol.csv
+test_data: !ref <save_folder>/test.csv
+
+batch_size: 4
+score_norm: 's-norm' # z-norm t-norm s-norm none
+cohort_size: 5000 # amount of imposter utterances in normalization cohort
+n_train_snts: 100000 # used for normalization stats
+
+# Feature parameters
+n_mels: 161
+input_type: fbank
+#input_type: wav2spk
+
+left_frames: 0
+right_frames: 0
+sentence_len: 3.0 # seconds
+split_ratio: [ 95,5 ]
+
+deltas: False
+
+# Dataloader options
+train_dataloader_opts:
+    batch_size: !ref <batch_size>
+
+enrol_dataloader_opts:
+    batch_size: !ref <batch_size>
+
+test_dataloader_opts:
+    batch_size: !ref <batch_size>
+
+#compute_features: !new:speechbrain.lobes.features.Fbank
+#    n_mels: !ref <n_mels>
+
+compute_features: !new:speechbrain.lobes.features.Spectrogram
+    n_fft: 320
+    win_length: 20
+
+mean_var_norm: !new:speechbrain.processing.features.InputNormalization
+    norm_type: sentence
+    std_norm: False
+
+#embedding_model: !new:speechbrain.lobes.models.ECAPA_TDNN.ECAPA_TDNN
+#    input_size: !ref <n_mels>
+#    input_type: !ref <input_type>
+#    channels: [ 512, 512, 512, 512, 1536 ]
+#    kernel_sizes: [ 5, 3, 3, 3, 1 ]
+#    dilations: [ 1, 2, 3, 4, 1 ]
+#    attention_channels: 128
+#    lin_neurons: 192
+embedding_model: !new:speechbrain.lobes.models.ResNet.ThinResNet
+    input_dim: !ref <n_mels>
+    mask: None
+    channels: [ 32, 64, 128, 256 ]
+    kernel_size: [ 5, 5 ]
+    stride: [ 2, 2 ]
+    avg_size: 10
+    embedding_size: 512
+    encoder_type: SAP2
+    downsample: k5
+    block_type: se2block
+    resnet_size: 50
+    fast: none1
+
+mean_var_norm_emb: !new:speechbrain.processing.features.InputNormalization
+    norm_type: global
+    std_norm: False
+
+pretrainer: !new:speechbrain.utils.parameter_transfer.Pretrainer
+    collect_in: !ref <save_folder>
+    loadables:
+        embedding_model: !ref <embedding_model>
+    paths:
+        embedding_model: !ref <pretrain_path>/embedding_model.ckpt
+
+# cnc1&2
+# ecapa cos fb80
+# EER(%):         10.616728
+# minDCF(0.01):    0.494680
+# minDCF(0.001):   0.621192
