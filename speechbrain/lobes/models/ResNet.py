@@ -863,7 +863,7 @@ class ThinResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x, lengths=None):
         # pdb.set_trace()
         # print(x.shape)
         if len(x.shape) == 3:
