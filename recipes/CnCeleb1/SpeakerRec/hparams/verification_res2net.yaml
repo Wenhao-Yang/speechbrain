@@ -13,7 +13,7 @@ __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 voxceleb_source: /home/yangwenhao/dataset/CN-Celeb
 data_folder: /home/yangwenhao/dataset/CN-Celeb #!PLACEHOLDER #e.g., /localscratch/voxceleb1
 data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
-output_folder: results/res2net50_se_spect_epoch30/<seed>_cn12
+output_folder: !ref results/res2net50_se_spect_epoch30/<seed>_cn12
 #    results/ecapa_augment_epoch30/<seed>_cn1_3s
 #    results/wav2_ecapa_augment/1988_epoch30_double
 save_folder: !ref <output_folder>/save_test
@@ -120,8 +120,8 @@ pretrainer: !new:speechbrain.utils.parameter_transfer.Pretrainer
     paths:
         embedding_model: !ref <pretrain_path>/embedding_model.ckpt
 
-# cnc1&2
-# ecapa cos fb80
-# EER(%):         10.616728
-# minDCF(0.01):    0.494680
-# minDCF(0.001):   0.621192
+# cnc1&2 res2net se
+
+# EER(%):         11.236271
+# minDCF(0.01):    0.540825
+# minDCF(0.001):   0.670619
