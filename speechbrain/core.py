@@ -447,6 +447,7 @@ class Brain:
             "nonfinite_patience": 3,
             "noprogressbar": False,
             "ckpt_interval_minutes": 0,
+            "delete_previous_ckpt": True,  # add delete options 20220511
             "grad_accumulation_factor": 1,
             "optimizer_step_limit": None,
         }
@@ -1082,6 +1083,7 @@ class Brain:
                         # missing the barrier.
                         if sb.utils.distributed.if_main_process():
                             self._save_intra_epoch_ckpt()
+
                         last_ckpt_time = time.time()
 
             # Run train "on_stage_end" on all processes

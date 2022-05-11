@@ -13,7 +13,7 @@ __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 voxceleb_source: /home/yangwenhao/dataset/CN-Celeb
 data_folder: /home/yangwenhao/dataset/CN-Celeb #!PLACEHOLDER #e.g., /localscratch/voxceleb1
 data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
-output_folder: !ref results/res2net50_se_spect_epoch30/<seed>_cn12
+output_folder: !ref results/resnet34_cbam_v2_em256_spect_epoch30/<seed>_cn12
 #    results/ecapa_augment_epoch30/<seed>_cn1_3s
 #    results/wav2_ecapa_augment/1988_epoch30_double
 save_folder: !ref <output_folder>/save_test
@@ -33,7 +33,8 @@ fast_score: true
 # However, a local path pointing to a directory containing your checkpoints may also be specified
 # instead (see pretrainer below)
 
-pretrain_path: results/res2net50_se_spect_epoch30/1988_cn12/save/CKPT+2022-05-03+20-32-54+00
+pretrain_path: results/resnet34_cbam_v2_em256_spect_epoch30/1988_cn12/save/CKPT+2022-05-11+03-09-51+00
+#    results/res2net50_se_spect_epoch30/1988_cn12/save/CKPT+2022-05-03+20-32-54+00
 #    results/ecapa_augment_epoch30/1988_cn1_3s/save/CKPT+2022-04-14+10-58-54+00
 #    results/ecapa_augment_epoch30/1988_cn1_dist/save/CKPT+2022-04-13+11-36-14+00
 #    results/wav2_ecapa_augment/1988_epoch30_double/save/CKPT+2022-04-06+06-02-15+00
@@ -102,11 +103,11 @@ embedding_model: !new:speechbrain.lobes.models.ResNet.ThinResNet
     kernel_size: [ 5, 5 ]
     stride: [ 2, 2 ]
     avg_size: 10
-    embedding_size: 512
+    embedding_size: 256
     encoder_type: SAP2
     downsample: k5
-    block_type: se2block
-    resnet_size: 50
+    block_type: cbam_v2
+    resnet_size: 34
     fast: none1
 
 mean_var_norm_emb: !new:speechbrain.processing.features.InputNormalization

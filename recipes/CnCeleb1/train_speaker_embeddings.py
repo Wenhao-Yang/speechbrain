@@ -190,10 +190,13 @@ class SpeakerBrain(sb.core.Brain):
                 train_stats=self.train_stats,
                 valid_stats=stage_stats,
             )
-            self.checkpointer.save_and_keep_only(
-                meta={"ErrorRate": stage_stats["ErrorRate"]},
-                min_keys=["ErrorRate"],
-            )
+            if hasattr(self.hparams, "delete_previous_ckpt") and self.hparams.delete_previous_ckpt:
+                self.checkpointer.save_and_keep_only(
+                    meta={"ErrorRate": stage_stats["ErrorRate"]},
+                    min_keys=["ErrorRate"],
+                )
+            else:
+                self.checkpointer.save_checkpoint(meta={"ErrorRate": stage_stats["ErrorRate"]})
 
 
 def dataio_prep(hparams):

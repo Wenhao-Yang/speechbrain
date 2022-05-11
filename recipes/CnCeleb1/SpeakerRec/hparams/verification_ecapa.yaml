@@ -128,3 +128,10 @@ pretrainer: !new:speechbrain.utils.parameter_transfer.Pretrainer
 # EER(%):         10.616728
 # minDCF(0.01):    0.494680
 # minDCF(0.001):   0.621192
+
+
+# cnc1&2
+# ecapa 1024 sp3 cos fb80
+# EER(%):          9.174880
+# minDCF(0.01):    0.491485
+# minDCF(0.001):   0.631941
