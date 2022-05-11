@@ -9,7 +9,7 @@ __set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 
-output_folder: !ref results/ecapa_1024_epoch30/<seed>_cn12_sp3 #_dist
+output_folder: !ref results/ecapa_1024_epoch30/<seed>_cn12_sp3_rdsgd #_dist
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
@@ -36,6 +36,7 @@ verification_file: /home/yangwenhao/dataset/CN-Celeb/eval/lists/trials.lst
 
 skip_prep: true
 ckpt_interval_minutes: 15 # save checkpoint every N min
+delete_previous_ckpt: False
 
 # Training parameters
 number_of_epochs: 30
@@ -183,11 +184,19 @@ opt_class: !name:torch.optim.Adam
     lr: !ref <lr>
     weight_decay: 0.000002
 
-lr_annealing: !new:speechbrain.nnet.schedulers.CyclicLRScheduler
-    base_lr: !ref <base_lr>
-    max_lr: !ref <max_lr>
-    step_size: !ref <step_size>
-    mode: !ref <sch_mode>
+#lr_annealing: !new:speechbrain.nnet.schedulers.CyclicLRScheduler
+#    base_lr: !ref <base_lr>
+#    max_lr: !ref <max_lr>
+#    step_size: !ref <step_size>
+#    mode: !ref <sch_mode>
+
+lr_annealing: !new:speechbrain.nnet.schedulers.ReduceLROnPlateau
+    lr_min: !ref <base_lr>
+    factor: 0.1
+    patience: 2
+#    max_lr: !ref <max_lr>
+#    step_size: !ref <step_size>
+#    mode: !ref <sch_mode>
 
 # Logging + checkpoints
 train_logger: !new:speechbrain.utils.train_logger.FileTrainLogger

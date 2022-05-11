@@ -182,7 +182,15 @@ class SpeakerBrain(sb.core.Brain):
 
         # Perform end-of-iteration things, like annealing, logging, etc.
         if stage == sb.Stage.VALID:
-            old_lr, new_lr = self.hparams.lr_annealing(epoch)
+
+            # if cycle or linear
+            if isinstance(self.hparams.lr_annealing, sb.nnet.schedulers.ReduceLROnPlateau):
+                old_lr, new_lr = self.hparams.lr_annealing([self.optimizer], epoch, stage_loss)
+            else:
+                old_lr, new_lr = self.hparams.lr_annealing(epoch)
+
+            # reduce on plateau
+
             sb.nnet.schedulers.update_learning_rate(self.optimizer, new_lr)
 
             self.hparams.train_logger.log_stats(
