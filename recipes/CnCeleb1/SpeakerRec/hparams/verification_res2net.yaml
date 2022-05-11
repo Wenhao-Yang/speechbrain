@@ -126,3 +126,10 @@ pretrainer: !new:speechbrain.utils.parameter_transfer.Pretrainer
 # EER(%):         11.236271
 # minDCF(0.01):    0.540825
 # minDCF(0.001):   0.670619
+
+
+# cnc1&2 resnet34 cbam_2 spectrogram
+
+# EER(%):         11.540411
+# minDCF(0.01):    0.538030
+# minDCF(0.001):   0.656879

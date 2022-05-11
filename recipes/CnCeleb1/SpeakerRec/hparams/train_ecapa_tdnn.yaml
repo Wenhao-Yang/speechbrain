@@ -9,7 +9,7 @@ __set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 
-output_folder: !ref results/ecapa_1024_epoch30/<seed>_cn12_sp3_rop #_dist
+output_folder: !ref results/ecapa_epoch30/<seed>_cn12_sp3_rop #_dist
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
@@ -29,8 +29,7 @@ rir_folder: /home/yangwenhao/dataset # Change it if needed
 # VoxCeleb1-H (cleaned): https://www.robots.ox.ac.uk/~vgg/data/voxceleb/meta/list_test_hard2.txt
 # VoxCeleb1-E (cleaned): https://www.robots.ox.ac.uk/~vgg/data/voxceleb/meta/list_test_all2.txt.
 # VoxCeleb1-E and VoxCeleb1-H lists are drawn from the VoxCeleb1 training set.
-# Therefore you cannot use any files in VoxCeleb1 for training if you are using these lists for testing.
-#verification_file: https://www.robots.ox.ac.uk/~vgg/data/voxceleb/meta/veri_test2.txt
+# Therefore you cannot use any files in VoxCeleb1 for training if you are using these lists for testing.verification_file: https://www.robots.ox.ac.uk/~vgg/data/voxceleb/meta/veri_test2.txt
 
 verification_file: /home/yangwenhao/dataset/CN-Celeb/eval/lists/trials.lst
 
@@ -40,7 +39,7 @@ delete_previous_ckpt: False
 
 # Training parameters
 number_of_epochs: 30
-batch_size: 16
+batch_size: 32
 lr: 0.001
 base_lr: 0.00000001
 sch_mode: triangular2
@@ -73,11 +72,13 @@ compute_features: !new:speechbrain.lobes.features.Fbank
     right_frames: !ref <right_frames>
     deltas: !ref <deltas>
 
+#    channels: [ 1024, 1024, 1024, 1024, 3072 ]
+
 embedding_model: !new:speechbrain.lobes.models.ECAPA_TDNN.ECAPA_TDNN
     input_size: !ref <n_mels>
-    channels: [ 1024, 1024, 1024, 1024, 3072 ]
-    kernel_sizes: [5, 3, 3, 3, 1]
-    dilations: [1, 2, 3, 4, 1]
+    channels: [ 512, 512, 512, 512, 1536 ]
+    kernel_sizes: [ 5, 3, 3, 3, 1 ]
+    dilations: [ 1, 2, 3, 4, 1 ]
     attention_channels: 128
     lin_neurons: 192
 
