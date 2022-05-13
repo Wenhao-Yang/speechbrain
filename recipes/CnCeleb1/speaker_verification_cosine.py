@@ -98,7 +98,7 @@ def compute_embedding_loop(data_loader):
                         input_len.append(1.0)
 
                 wavs = torch.stack(input_wavs)
-                lens = torch.LongTensor(input_len)
+                lens = torch.tensor(input_len)
 
             wavs, lens = wavs.to(params["device"]), lens.to(params["device"])
             emb = compute_embedding(wavs, lens).unsqueeze(1)
