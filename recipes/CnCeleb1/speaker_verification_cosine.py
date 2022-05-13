@@ -90,7 +90,7 @@ def get_verification_scores(veri_test, fast=False):
     positive_scores = []
     negative_scores = []
 
-    save_file = os.path.join(params["output_folder"], "scores.txt")
+    save_file = os.path.join(params["save_folder"], "scores.txt")
     if os.path.isfile(save_file):
         with open(save_file, "r") as f:
             for l in f.readlines():
