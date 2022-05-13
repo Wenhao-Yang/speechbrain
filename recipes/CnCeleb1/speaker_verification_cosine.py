@@ -86,6 +86,7 @@ def compute_embedding_loop(data_loader):
 
                 for i, wav in enumerate(wavs):
                     num_chunk = int(lens[i] * wavs.shape[1] / chunk_size)
+
                     for j in range(num_chunk):
                         start = int(j * chunk_size)
                         end = int(start + chunk_size)
@@ -97,9 +98,11 @@ def compute_embedding_loop(data_loader):
                         input_wavs.append(wav[start:end])
                         input_len.append(1.0)
 
-                pdb.set_trace()
-                wavs = torch.stack(input_wavs)
-                lens = torch.tensor(input_len)
+                try:
+                    wavs = torch.stack(input_wavs)
+                    lens = torch.tensor(input_len)
+                except Exception as e:
+                    pdb.set_trace()
 
             wavs, lens = wavs.to(params["device"]), lens.to(params["device"])
             emb = compute_embedding(wavs, lens).unsqueeze(1)
