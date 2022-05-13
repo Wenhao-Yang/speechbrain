@@ -77,11 +77,12 @@ def compute_embedding_loop(data_loader):
                 continue
 
             # pdb.set_trace()
-
+            test_input_fix = False
             if 'test_input' in params and params['test_input'] == 'fix':
                 chunk_size = params['chunk_size'] * params['sample_rate']
 
                 if wavs.shape[1] * lens.min() > 2 * chunk_size:
+                    test_input_fix = True
                     input_wavs = []
                     input_len = []
                     input_id = {}
@@ -109,7 +110,7 @@ def compute_embedding_loop(data_loader):
             wavs, lens = wavs.to(params["device"]), lens.to(params["device"])
             emb = compute_embedding(wavs, lens).unsqueeze(1)
             for i, seg_id in enumerate(seg_ids):
-                if 'test_input' in params and params['test_input'] == 'fix':
+                if test_input_fix:
                     id_idx = input_id[seg_id]
                     embedding_dict[seg_id] = emb[id_idx].detach().clone().mean(dim=0)
                 else:
