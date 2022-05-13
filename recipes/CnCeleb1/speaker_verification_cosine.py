@@ -79,30 +79,32 @@ def compute_embedding_loop(data_loader):
             # pdb.set_trace()
 
             if 'test_input' in params and params['test_input'] == 'fix':
-                input_wavs = []
-                input_len = []
-                input_id = {}
                 chunk_size = params['chunk_size'] * params['sample_rate']
 
-                for i, wav in enumerate(wavs):
-                    num_chunk = int(lens[i] * wavs.shape[1] / chunk_size)
+                if wavs.shape[1] > 2 * chunk_size:
+                    input_wavs = []
+                    input_len = []
+                    input_id = {}
 
-                    for j in range(num_chunk):
-                        start = int(j * chunk_size)
-                        end = int(start + chunk_size)
-                        if end > int(lens[i] * wavs.shape[1]):
-                            start = int(lens[i] * wavs.shape[1]) - chunk_size
-                            end = int(lens[i] * wavs.shape[1])
+                    for i, wav in enumerate(wavs):
+                        num_chunk = int(lens[i] * wavs.shape[1] / chunk_size)
 
-                        input_id.setdefault(seg_ids[i], []).append(len(input_wavs))
-                        input_wavs.append(wav[start:end])
-                        input_len.append(1.0)
+                        for j in range(num_chunk):
+                            start = int(j * chunk_size)
+                            end = int(start + chunk_size)
+                            if end > int(lens[i] * wavs.shape[1]):
+                                start = int(lens[i] * wavs.shape[1]) - chunk_size
+                                end = int(lens[i] * wavs.shape[1])
 
-                try:
-                    wavs = torch.stack(input_wavs)
-                    lens = torch.tensor(input_len)
-                except Exception as e:
-                    pdb.set_trace()
+                            input_id.setdefault(seg_ids[i], []).append(len(input_wavs))
+                            input_wavs.append(wav[start:end])
+                            input_len.append(1.0)
+
+                    try:
+                        wavs = torch.stack(input_wavs)
+                        lens = torch.tensor(input_len)
+                    except Exception as e:
+                        pdb.set_trace()
 
             wavs, lens = wavs.to(params["device"]), lens.to(params["device"])
             emb = compute_embedding(wavs, lens).unsqueeze(1)
