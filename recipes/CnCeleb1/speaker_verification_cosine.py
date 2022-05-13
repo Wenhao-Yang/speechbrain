@@ -75,10 +75,35 @@ def compute_embedding_loop(data_loader):
                     found = True
             if not found:
                 continue
+
+            if 'test_input' in params and params['test_input'] == 'fix':
+                input_wavs = []
+                input_len = []
+                input_id = {}
+                chunk_size = params['chunk_size'] * params['sample_rate']
+                for i, wav in enumerate(wavs):
+                    for j in range(lens[i] / chunk_size):
+                        start = j * chunk_size
+                        end = start + chunk_size
+                        if end > lens[i]:
+                            start = lens[i] - chunk_size
+                            end = lens[i]
+
+                        input_id.setdefault(seg_ids[i], []).append(len(input_wavs))
+                        input_wavs.append(wav[start:end])
+                        input_len.append(chunk_size)
+
+                wavs = torch.stack(input_wavs)
+                lens = torch.LongTensor(input_len)
+
             wavs, lens = wavs.to(params["device"]), lens.to(params["device"])
             emb = compute_embedding(wavs, lens).unsqueeze(1)
             for i, seg_id in enumerate(seg_ids):
-                embedding_dict[seg_id] = emb[i].detach().clone()
+                if 'test_input' in params and params['test_input'] == 'fix':
+                    id_idx = input_id[seg_id]
+                    embedding_dict[seg_id] = emb[id_idx].detach().clone().mean(dim=0)
+                else:
+                    embedding_dict[seg_id] = emb[i].detach().clone()
 
     return embedding_dict
 
