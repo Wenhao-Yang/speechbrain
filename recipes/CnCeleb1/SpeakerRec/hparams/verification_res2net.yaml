@@ -17,7 +17,7 @@ output_folder: !ref results/resnet34_cbam_v2_em256_spect_epoch30/<seed>_cn12
 #    results/ecapa_augment_epoch30/<seed>_cn1_3s
 #    results/wav2_ecapa_augment/1988_epoch30_double
 save_folder: !ref <output_folder>/save_test2
-device: 'cuda:0'
+device: 'cuda:3'
 
 # Use the following links for the official voxceleb splits:
 # VoxCeleb1 (cleaned): https://www.robots.ox.ac.uk/~vgg/data/voxceleb/meta/veri_test2.txt
