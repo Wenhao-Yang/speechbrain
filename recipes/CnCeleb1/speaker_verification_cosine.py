@@ -88,9 +88,9 @@ def compute_embedding_loop(data_loader):
                     for j in range(num_chunk):
                         start = j * chunk_size
                         end = start + chunk_size
-                        if end > lens[i]:
-                            start = lens[i] - chunk_size
-                            end = lens[i]
+                        if end > int(lens[i] * wavs.shape[1]):
+                            start = int(lens[i] * wavs.shape[1]) - chunk_size
+                            end = int(lens[i] * wavs.shape[1])
 
                         input_id.setdefault(seg_ids[i], []).append(len(input_wavs))
                         input_wavs.append(wav[start:end])
