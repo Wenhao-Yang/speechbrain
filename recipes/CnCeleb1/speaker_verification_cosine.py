@@ -76,13 +76,14 @@ def compute_embedding_loop(data_loader):
             if not found:
                 continue
 
-            # pdb.set_trace()
+            pdb.set_trace()
 
             if 'test_input' in params and params['test_input'] == 'fix':
                 input_wavs = []
                 input_len = []
                 input_id = {}
                 chunk_size = params['chunk_size'] * params['sample_rate']
+
                 for i, wav in enumerate(wavs):
                     num_chunk = int(lens[i] * wavs.shape[1] / chunk_size)
                     for j in range(num_chunk):
