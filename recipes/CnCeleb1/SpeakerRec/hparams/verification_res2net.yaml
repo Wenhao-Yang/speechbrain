@@ -16,7 +16,7 @@ data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-
 output_folder: !ref results/resnet34_cbam_v2_em256_spect_epoch30/<seed>_cn12
 #    results/ecapa_augment_epoch30/<seed>_cn1_3s
 #    results/wav2_ecapa_augment/1988_epoch30_double
-save_folder: !ref <output_folder>/save_test
+save_folder: !ref <output_folder>/save_test2
 device: 'cuda:0'
 
 # Use the following links for the official voxceleb splits:
@@ -64,6 +64,9 @@ left_frames: 0
 right_frames: 0
 sentence_len: 3.0 # seconds
 split_ratio: [ 95,5 ]
+chunk_size: 2.0 # seconds
+test_input: fix
+sample_rate: 16000
 
 deltas: False
 
