@@ -97,6 +97,7 @@ def compute_embedding_loop(data_loader):
                         input_wavs.append(wav[start:end])
                         input_len.append(1.0)
 
+                pdb.set_trace()
                 wavs = torch.stack(input_wavs)
                 lens = torch.tensor(input_len)
 
