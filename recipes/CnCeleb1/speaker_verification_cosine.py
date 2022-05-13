@@ -76,6 +76,8 @@ def compute_embedding_loop(data_loader):
             if not found:
                 continue
 
+            pdb.set_trace()
+
             if 'test_input' in params and params['test_input'] == 'fix':
                 input_wavs = []
                 input_len = []
