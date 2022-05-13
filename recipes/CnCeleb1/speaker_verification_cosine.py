@@ -95,7 +95,7 @@ def compute_embedding_loop(data_loader):
 
                         input_id.setdefault(seg_ids[i], []).append(len(input_wavs))
                         input_wavs.append(wav[start:end])
-                        input_len.append(chunk_size)
+                        input_len.append(1.0)
 
                 wavs = torch.stack(input_wavs)
                 lens = torch.LongTensor(input_len)
