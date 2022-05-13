@@ -81,7 +81,7 @@ def compute_embedding_loop(data_loader):
             if 'test_input' in params and params['test_input'] == 'fix':
                 chunk_size = params['chunk_size'] * params['sample_rate']
 
-                if wavs.shape[1] > 2 * chunk_size:
+                if wavs.shape[1] * lens.min() > 2 * chunk_size:
                     input_wavs = []
                     input_len = []
                     input_id = {}
