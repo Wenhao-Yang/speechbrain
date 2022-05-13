@@ -654,7 +654,7 @@ class ThinResNet(nn.Module):
 
     def __init__(self, resnet_size=34, block_type='basic', expansion=1, channels=[16, 32, 64, 128],
                  input_len=300, inst_norm=True, input_dim=257, kernel_size=5, stride=1, padding=2,
-                 dropout_p=0.0, embedding_size=128, fast='None', time_dim=1, avg_size=4,
+                 dropout_p=0.0, embedding_size=128, fast='none1', time_dim=1, avg_size=4,
                  encoder_type='STAP', zero_init_residual=False, groups=1, width_per_group=64,
                  filter=None, replace_stride_with_dilation=None, downsample=None,
                  mask='None', mask_len=[5, 10], scale=0.2, weight_p=0.1,
@@ -756,45 +756,46 @@ class ThinResNet(nn.Module):
         self.layer2 = self._make_layer(block, self.num_filter[1], layers[1], stride=2)
         self.layer3 = self._make_layer(block, self.num_filter[2], layers[2], stride=2)
 
-        if self.fast in ['avp1', 'mxp1', 'none1']:
-            self.layer4 = self._make_layer(block, self.num_filter[3], layers[3], stride=1)
-        else:
-            self.layer4 = self._make_layer(block, self.num_filter[3], layers[3], stride=2)
+        last_stride = 1 if self.fast in ['avp1', 'mxp1', 'none1'] else 2
+        self.layer4 = self._make_layer(block, self.num_filter[3], layers[3], stride=last_stride)
 
         # self.gain = GAIN(time=self.input_len, freq=self.input_dim) if self.gain_layer else None
         self.dropout = nn.Dropout(self.dropout_p)
         # [64, 128, 37, 8]
         # self.avgpool = nn.AvgPool2d(kernel_size=(3, 4), stride=(2, 1))
         # 300 is the length of features
+        if freq_dim > 0:
+            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
+            encode_input_dim = int(freq_dim * self.num_filter[3] * block.expansion)
+        else:
+            self.avgpool = None
+            encode_input_dim = int(input_dim / self.conv1.stride[1] / 4 / last_stride * self.num_filter[
+                3] * block.expansion)
 
         if encoder_type == 'SAP':
-            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
-            self.encoder = SelfAttentionPooling(input_dim=self.num_filter[3] * block.expansion,
-                                                hidden_dim=int(embedding_size / 2))
-            self.encoder_output = self.num_filter[3] * block.expansion * freq_dim
+            self.encoder = SelfAttentionPooling(input_dim=encode_input_dim, hidden_dim=int(embedding_size / 2))
+            self.encoder_output = encode_input_dim
+
         elif encoder_type == 'SAP2':
-            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
-            self.encoder = SelfAttentionPooling_v2(input_dim=self.num_filter[3] * block.expansion * freq_dim,
+            self.encoder = SelfAttentionPooling_v2(input_dim=encode_input_dim,
                                                    hidden_dim=int(embedding_size / 2))
-            self.encoder_output = self.num_filter[3] * block.expansion * freq_dim
+            self.encoder_output = encode_input_dim
+
         elif encoder_type in ['ASTP', 'SASP']:
-            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
-            self.encoder = AttentionStatisticPooling(input_dim=self.num_filter[3] * block.expansion * freq_dim,
+            self.encoder = AttentionStatisticPooling(input_dim=encode_input_dim,
                                                      hidden_dim=int(embedding_size / 2))
-            self.encoder_output = self.num_filter[3] * 2 * block.expansion * freq_dim
+            self.encoder_output = encode_input_dim * 2
+
         elif encoder_type in ['ASTP2', 'SASP2']:
-            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
-            self.encoder = AttentionStatisticPooling_v2(input_dim=self.num_filter[3] * block.expansion * freq_dim,
-                                                        hidden_dim=int(embedding_size / 2))
-            self.encoder_output = self.num_filter[3] * 2 * block.expansion * freq_dim
+            self.encoder = AttentionStatisticPooling_v2(input_dim=encode_input_dim, hidden_dim=int(embedding_size / 2))
+            self.encoder_output = encode_input_dim * 2
+
         elif encoder_type == 'STAP':
-            self.avgpool = nn.AdaptiveAvgPool2d((None, freq_dim))
-            self.encoder = StatisticPooling(input_dim=self.num_filter[3] * freq_dim * block.expansion)
-            self.encoder_output = self.num_filter[3] * freq_dim * 2 * block.expansion
+            self.encoder = StatisticPooling(input_dim=encode_input_dim)
+            self.encoder_output = encode_input_dim * 2
         else:
-            self.avgpool = nn.AdaptiveAvgPool2d((time_dim, freq_dim))
-            self.encoder = None
-            self.encoder_output = self.num_filter[3] * freq_dim * time_dim * block.expansion
+            self.encoder = nn.AdaptiveAvgPool2d((time_dim, None))
+            self.encoder_output = encode_input_dim * time_dim
 
         self.fc1 = nn.Sequential(
             nn.Linear(self.encoder_output, embedding_size),
@@ -862,7 +863,7 @@ class ThinResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x, lengths=None):
         # pdb.set_trace()
         # print(x.shape)
         if len(x.shape) == 3:
@@ -886,7 +887,9 @@ class ThinResNet(nn.Module):
         if self.dropout_p > 0:
             x = self.dropout(x)
 
-        x = self.avgpool(x)
+        if self.avgpool != None:
+            x = self.avgpool(x)
+
         if self.encoder != None:
             x = self.encoder(x)
 

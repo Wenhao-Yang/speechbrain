@@ -13,7 +13,8 @@ __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 voxceleb_source: /home/yangwenhao/dataset/CN-Celeb
 data_folder: /home/yangwenhao/dataset/CN-Celeb #!PLACEHOLDER #e.g., /localscratch/voxceleb1
 data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
-output_folder: results/ecapa_1024_epoch30/1988_cn12_sp3
+output_folder: !ref results/resnet34_cbam_v2_em256_spect_epoch30/<seed>_cn12
+#    results/ecapa_augment_epoch30/<seed>_cn1_3s
 #    results/wav2_ecapa_augment/1988_epoch30_double
 save_folder: !ref <output_folder>/save_test2
 device: 'cuda:0'
@@ -32,7 +33,8 @@ fast_score: true
 # However, a local path pointing to a directory containing your checkpoints may also be specified
 # instead (see pretrainer below)
 
-pretrain_path: results/ecapa_1024_epoch30/1988_cn12_sp3/save/CKPT+2022-05-06
+pretrain_path: results/resnet34_cbam_v2_em256_spect_epoch30/1988_cn12/save/CKPT+2022-05-11+03-09-51+00
+#    results/res2net50_se_spect_epoch30/1988_cn12/save/CKPT+2022-05-03+20-32-54+00
 #    results/ecapa_augment_epoch30/1988_cn1_3s/save/CKPT+2022-04-14+10-58-54+00
 #    results/ecapa_augment_epoch30/1988_cn1_dist/save/CKPT+2022-04-13+11-36-14+00
 #    results/wav2_ecapa_augment/1988_epoch30_double/save/CKPT+2022-04-06+06-02-15+00
@@ -54,7 +56,7 @@ cohort_size: 5000 # amount of imposter utterances in normalization cohort
 n_train_snts: 100000 # used for normalization stats
 
 # Feature parameters
-n_mels: 80
+n_mels: 161
 input_type: fbank
 #input_type: wav2spk
 
@@ -65,7 +67,6 @@ split_ratio: [ 95,5 ]
 chunk_size: 2.0 # seconds
 test_input: fix
 sample_rate: 16000
-
 
 deltas: False
 
@@ -79,21 +80,38 @@ enrol_dataloader_opts:
 test_dataloader_opts:
     batch_size: !ref <batch_size>
 
-compute_features: !new:speechbrain.lobes.features.Fbank
-    n_mels: !ref <n_mels>
+#compute_features: !new:speechbrain.lobes.features.Fbank
+#    n_mels: !ref <n_mels>
+
+compute_features: !new:speechbrain.lobes.features.Spectrogram
+    n_fft: 320
+    win_length: 20
 
 mean_var_norm: !new:speechbrain.processing.features.InputNormalization
     norm_type: sentence
     std_norm: False
 
-embedding_model: !new:speechbrain.lobes.models.ECAPA_TDNN.ECAPA_TDNN
-    input_size: !ref <n_mels>
-    input_type: !ref <input_type>
-    channels: [ 1024, 1024, 1024, 1024, 3072 ]
-    kernel_sizes: [ 5, 3, 3, 3, 1 ]
-    dilations: [ 1, 2, 3, 4, 1 ]
-    attention_channels: 128
-    lin_neurons: 192
+#embedding_model: !new:speechbrain.lobes.models.ECAPA_TDNN.ECAPA_TDNN
+#    input_size: !ref <n_mels>
+#    input_type: !ref <input_type>
+#    channels: [ 512, 512, 512, 512, 1536 ]
+#    kernel_sizes: [ 5, 3, 3, 3, 1 ]
+#    dilations: [ 1, 2, 3, 4, 1 ]
+#    attention_channels: 128
+#    lin_neurons: 192
+embedding_model: !new:speechbrain.lobes.models.ResNet.ThinResNet
+    input_dim: !ref <n_mels>
+    mask: None
+    channels: [ 32, 64, 128, 256 ]
+    kernel_size: [ 5, 5 ]
+    stride: [ 2, 2 ]
+    avg_size: 10
+    embedding_size: 256
+    encoder_type: SAP2
+    downsample: k5
+    block_type: cbam_v2
+    resnet_size: 34
+    fast: none1
 
 mean_var_norm_emb: !new:speechbrain.processing.features.InputNormalization
     norm_type: global
@@ -106,36 +124,15 @@ pretrainer: !new:speechbrain.utils.parameter_transfer.Pretrainer
     paths:
         embedding_model: !ref <pretrain_path>/embedding_model.ckpt
 
-# cnc1
-# ecapa cos fb80 2s
-# EER(%):         12.227542
-# minDCF(0.01):    0.582927
-# minDCF(0.001):   0.709320
+# cnc1&2 res2net se
 
-# ecapa cos fb80 3s
-# EER(%):         13.348353
-# minDCF(0.01):    0.602665
-# minDCF(0.001):   0.730496
-
-# ecapa cos sinc 80
-# EER(%):         15.415376
-# minDCF(0.01):    0.694188
-# minDCF(0.001):   0.806649
-
-# ecapa cos wav2spk 80
-# EER(%):         17.133202
-# minDCF(0.01):    0.692228
-# minDCF(0.001):   0.795583
-
-# cnc1&2
-# ecapa cos fb80
-# EER(%):         10.616728
-# minDCF(0.01):    0.494680
-# minDCF(0.001):   0.621192
+# EER(%):         11.236271
+# minDCF(0.01):    0.540825
+# minDCF(0.001):   0.670619
 
 
-# cnc1&2
-# ecapa 1024 sp3 cos fb80
-# EER(%):          9.174880
-# minDCF(0.01):    0.491485
-# minDCF(0.001):   0.631941
+# cnc1&2 resnet34 cbam_2 spectrogram
+
+# EER(%):         11.540411
+# minDCF(0.01):    0.538030
+# minDCF(0.001):   0.656879

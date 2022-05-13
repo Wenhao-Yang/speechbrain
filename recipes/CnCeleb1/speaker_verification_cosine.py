@@ -75,10 +75,46 @@ def compute_embedding_loop(data_loader):
                     found = True
             if not found:
                 continue
+
+            # pdb.set_trace()
+            test_input_fix = False
+            if 'test_input' in params and params['test_input'] == 'fix':
+                chunk_size = params['chunk_size'] * params['sample_rate']
+
+                if wavs.shape[1] * lens.min() > 2 * chunk_size:
+                    test_input_fix = True
+                    input_wavs = []
+                    input_len = []
+                    input_id = {}
+
+                    for i, wav in enumerate(wavs):
+                        num_chunk = int(lens[i] * wavs.shape[1] / chunk_size)
+
+                        for j in range(num_chunk):
+                            start = int(j * chunk_size)
+                            end = int(start + chunk_size)
+                            if end > int(lens[i] * wavs.shape[1]):
+                                start = int(lens[i] * wavs.shape[1]) - chunk_size
+                                end = int(lens[i] * wavs.shape[1])
+
+                            input_id.setdefault(seg_ids[i], []).append(len(input_wavs))
+                            input_wavs.append(wav[start:end])
+                            input_len.append(1.0)
+
+                    try:
+                        wavs = torch.stack(input_wavs)
+                        lens = torch.tensor(input_len)
+                    except Exception as e:
+                        pdb.set_trace()
+
             wavs, lens = wavs.to(params["device"]), lens.to(params["device"])
             emb = compute_embedding(wavs, lens).unsqueeze(1)
             for i, seg_id in enumerate(seg_ids):
-                embedding_dict[seg_id] = emb[i].detach().clone()
+                if test_input_fix:
+                    id_idx = input_id[seg_id]
+                    embedding_dict[seg_id] = emb[id_idx].detach().clone().mean(dim=0)
+                else:
+                    embedding_dict[seg_id] = emb[i].detach().clone()
 
     return embedding_dict
 
@@ -90,7 +126,7 @@ def get_verification_scores(veri_test, fast=False):
     positive_scores = []
     negative_scores = []
 
-    save_file = os.path.join(params["output_folder"], "scores.txt")
+    save_file = os.path.join(params["save_folder"], "scores.txt")
     if os.path.isfile(save_file):
         with open(save_file, "r") as f:
             for l in f.readlines():

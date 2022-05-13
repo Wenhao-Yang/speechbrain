@@ -41,7 +41,48 @@ class SpeakerBrain(sb.core.Brain):
 
             # Applying the augmentation pipeline
             wavs_aug_tot = []
+            lens_aug_tot = []
             wavs_aug_tot.append(wavs)
+            lens_aug_tot.append(lens)
+
+            if len(self.hparams.augment_spk_pipeline) > 0:
+                for count, augment in enumerate(self.hparams.augment_spk_pipeline):
+
+                    # Apply augment
+                    wavs_aug = augment(wavs, lens)
+
+                    # Managing speed change
+                    if wavs_aug.shape[1] > wavs.shape[1]:
+                        wavs_aug = wavs_aug[:, 0: wavs.shape[1]]
+                    else:
+                        zero_sig = torch.zeros_like(wavs)
+                        zero_sig[:, 0: wavs_aug.shape[1]] = wavs_aug
+                        wavs_aug = zero_sig
+
+                    if self.hparams.concat_augment:
+                        wavs_aug_tot.append(wavs_aug)
+                    else:
+                        wavs = wavs_aug
+                        wavs_aug_tot[0] = wavs
+
+                    if isinstance(augment, sb.lobes.augment.TimeDomainSpecAugment):
+                        if len(augment.speed_perturb.speeds) == 1:
+                            if augment.speed_perturb.speeds[0] != 100:
+                                lens_aug_tot.append(lens + int((count + 1) * self.hparams.out_n_neurons / (
+                                            len(self.hparams.augment_spk_pipeline) + 1)))
+                            else:
+                                lens_aug_tot.append(lens)
+                    else:
+                        lens_aug_tot.append(lens)
+
+                wavs = torch.cat(wavs_aug_tot, dim=0)
+                lens = torch.cat(lens_aug_tot, dim=0)
+
+                wavs_aug_tot = []
+                lens_aug_tot = []
+                wavs_aug_tot.append(wavs)
+                lens_aug_tot.append(lens)
+
             for count, augment in enumerate(self.hparams.augment_pipeline):
 
                 # Apply augment
@@ -49,10 +90,10 @@ class SpeakerBrain(sb.core.Brain):
 
                 # Managing speed change
                 if wavs_aug.shape[1] > wavs.shape[1]:
-                    wavs_aug = wavs_aug[:, 0 : wavs.shape[1]]
+                    wavs_aug = wavs_aug[:, 0: wavs.shape[1]]
                 else:
                     zero_sig = torch.zeros_like(wavs)
-                    zero_sig[:, 0 : wavs_aug.shape[1]] = wavs_aug
+                    zero_sig[:, 0: wavs_aug.shape[1]] = wavs_aug
                     wavs_aug = zero_sig
 
                 if self.hparams.concat_augment:
@@ -61,10 +102,13 @@ class SpeakerBrain(sb.core.Brain):
                     wavs = wavs_aug
                     wavs_aug_tot[0] = wavs
 
+                lens_aug_tot.append(lens)
+
             wavs = torch.cat(wavs_aug_tot, dim=0)
             self.n_augment = len(wavs_aug_tot)
-            lens = torch.cat([lens] * self.n_augment)
+            lens = torch.cat(lens_aug_tot, dim=0)
 
+        # print(wavs.shape, lens.shape)
         # Feature extraction and normalization
         feats = self.modules.compute_features(wavs)
         feats = self.modules.mean_var_norm(feats, lens)
@@ -84,11 +128,28 @@ class SpeakerBrain(sb.core.Brain):
 
         # Concatenate labels (due to data augmentation)
         if stage == sb.Stage.TRAIN:
+
+            if hasattr(self.hparams, "augment_spk_pipeline") and len(self.hparams.augment_spk_pipeline) > 0:
+                spks_aug_tot = [spkid]
+                for count, augment in enumerate(self.hparams.augment_spk_pipeline):
+                    if isinstance(augment, sb.lobes.augment.TimeDomainSpecAugment):
+                        if len(augment.speed_perturb.speeds) == 1:
+                            if augment.speed_perturb.speeds[0] != 100:
+                                spks_aug_tot.append(spkid + int((count + 1) * self.hparams.out_n_neurons / (
+                                        len(self.hparams.augment_spk_pipeline) + 1)))
+                            else:
+                                spks_aug_tot.append(spkid)
+                spkid = torch.cat(spks_aug_tot, dim=0)
+
             spkid = torch.cat([spkid] * self.n_augment, dim=0)
 
+        # print(predictions.shape)
+        # print(spkid)
         loss = self.hparams.compute_cost(predictions, spkid, lens)
-        if self.hparams.second_loss_ratio > 0:
-            loss = loss + self.hparams.second_loss_ratio * self.hparams.compute_cost2(predictions, spkid)
+
+        if hasattr(self.hparams, "second_loss_ratio"):
+            if self.hparams.second_loss_ratio > 0:
+                loss = loss + self.hparams.second_loss_ratio * self.hparams.compute_cost2(predictions, spkid)
 
         if hasattr(self.hparams.lr_annealing, "on_batch_end"):
             self.hparams.lr_annealing.on_batch_end(self.optimizer)
@@ -121,7 +182,15 @@ class SpeakerBrain(sb.core.Brain):
 
         # Perform end-of-iteration things, like annealing, logging, etc.
         if stage == sb.Stage.VALID:
-            old_lr, new_lr = self.hparams.lr_annealing(epoch)
+
+            # if cycle or linear
+            if isinstance(self.hparams.lr_annealing, sb.nnet.schedulers.ReduceLROnPlateau):
+                old_lr, new_lr = self.hparams.lr_annealing([self.optimizer], epoch, stage_loss)
+            else:
+                old_lr, new_lr = self.hparams.lr_annealing(epoch)
+
+            # reduce on plateau
+
             sb.nnet.schedulers.update_learning_rate(self.optimizer, new_lr)
 
             self.hparams.train_logger.log_stats(
@@ -129,10 +198,13 @@ class SpeakerBrain(sb.core.Brain):
                 train_stats=self.train_stats,
                 valid_stats=stage_stats,
             )
-            self.checkpointer.save_and_keep_only(
-                meta={"ErrorRate": stage_stats["ErrorRate"]},
-                min_keys=["ErrorRate"],
-            )
+            if hasattr(self.hparams, "delete_previous_ckpt") and self.hparams.delete_previous_ckpt:
+                self.checkpointer.save_and_keep_only(
+                    meta={"ErrorRate": stage_stats["ErrorRate"]},
+                    min_keys=["ErrorRate"],
+                )
+            else:
+                self.checkpointer.save_checkpoint(meta={"ErrorRate": stage_stats["ErrorRate"]})
 
 
 def dataio_prep(hparams):
@@ -233,6 +305,7 @@ if __name__ == "__main__":
             "data_folder2": hparams["data_folder2"] if 'data_folder2' in hparams else '',
             "split_ratio": hparams["split_ratio"],  # [90, 10],
             "seg_dur": hparams["sentence_len"],
+            "skip_prep": hparams["skip_prep"],
         },
     )
 
