@@ -15,7 +15,7 @@ data_folder: /home/yangwenhao/dataset/CN-Celeb #!PLACEHOLDER #e.g., /localscratc
 data_folder2: /home/yangwenhao/dataset/CN-Celeb2 # ,/home/yangwenhao/dataset/CN-Celeb2  # e.g. /path/to/Voxceleb
 output_folder: results/ecapa_1024_epoch30/1988_cn12_sp3
 #    results/wav2_ecapa_augment/1988_epoch30_double
-save_folder: !ref <output_folder>/save_test2
+save_folder: !ref <output_folder>/save_test3
 device: 'cuda:0'
 
 # Use the following links for the official voxceleb splits:
@@ -48,7 +48,7 @@ train_data: !ref <save_folder>/train.csv
 enrol_data: !ref <save_folder>/enrol.csv
 test_data: !ref <save_folder>/test.csv
 
-batch_size: 4
+batch_size: 2
 score_norm: 's-norm' # z-norm t-norm s-norm none
 cohort_size: 5000 # amount of imposter utterances in normalization cohort
 n_train_snts: 100000 # used for normalization stats
@@ -62,7 +62,7 @@ left_frames: 0
 right_frames: 0
 sentence_len: 3.0 # seconds
 split_ratio: [ 95,5 ]
-chunk_size: 2.0 # seconds
+chunk_size: 3.0 # seconds
 test_input: fix
 sample_rate: 16000
 
