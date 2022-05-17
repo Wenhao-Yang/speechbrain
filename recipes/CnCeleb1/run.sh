@@ -57,7 +57,7 @@ fi
 
 if [ $stage -le 30 ]; then
 
-  CUDA_VISIBLE_DEVICES=0,3 python -m torch.distributed.launch --master_port='29505' --nproc_per_node=2 train_speaker_embeddings.py SpeakerRec/hparams/train_resnet.yaml --distributed_launch --distributed_backend='nccl'
+  CUDA_VISIBLE_DEVICES=0,3 python -m torch.distributed.launch --master_port='29505' --auto_mix_prec --nproc_per_node=2 train_speaker_embeddings.py SpeakerRec/hparams/train_resnet.yaml --distributed_launch --distributed_backend='nccl'
 
 
 #  CUDA_VISIBLE_DEVICES=3 python speaker_verification_cosine.py SpeakerRec/hparams/verification_res2net.yaml
