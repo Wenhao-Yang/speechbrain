@@ -259,10 +259,8 @@ def _get_utt_split_lists(
 
     print("Getting file list...")
     for data_folder in data_folders:
-        if not os.path.exists(verification_pairs_file):
-            # test_lst = []
-            test_spks = set([])
-        else:
+        test_spks = set([])
+        if os.path.exists(verification_pairs_file):
             test_lst = [
                 line.rstrip("\n").split(" ")[1]
                 for line in open(verification_pairs_file)
@@ -271,15 +269,29 @@ def _get_utt_split_lists(
             print('There are %d utterances in test trials!' % (len(test_lst)))
 
             # test_spks = [snt.split("/")[0] for snt in test_lst]
-            test_spks = set([snt.split("/")[1].split('-')[0] for snt in test_lst])
+            # test_spks = set([snt.split("/")[1].split('-')[0] for snt in test_lst])
+            for snt in test_lst:
+                truth, enroll_path, eval_path = snt.split()
+                test_spks.add(enroll_path.split('/')[0])
+                test_spks.add(eval_path.split('/')[0])
+
             print('There are %d spks in test trials!' % (len(test_spks)))
 
+        # / home / yangwenhao / dataset / voxceleb2 / test / aac
+        path = os.path.join(data_folder, "test", "aac", "*", "*.wav")
+        wav_paths = glob.glob(path, recursive=True)
+        if len(wav_paths) > 0:
+            for f in wav_paths:
+                try:
+                    test_spks.add(f.split("/")[-3])  # .split("/")[0]
+                except ValueError:
+                    logger.info(f"Malformed path: {f}")
+                    continue
         # test_lst = [
         #     line.rstrip("\n").split(" ")[1]
         #     for line in open(verification_pairs_file)
         # ]
         # test_lst = set(sorted(test_lst))
-        #
         # test_spks = [snt.split("/")[0] for snt in test_lst]
 
         path = os.path.join(data_folder, "wav", "**", "*.wav")
