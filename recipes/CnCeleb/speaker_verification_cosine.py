@@ -149,6 +149,7 @@ def get_verification_scores(veri_test, fast=False):
         if test_id not in test_cohort:
             test = test_dict[test_id]
 
+            # Getting norm stats for test impostors
             test_rep = test.repeat(train_cohort.shape[0], 1, 1)
             score_t_c = similarity(test_rep, train_cohort)
 
@@ -164,7 +165,6 @@ def get_verification_scores(veri_test, fast=False):
                 'mean_t_c': mean_t_c,
                 'std_t_c': std_t_c,
             }
-
 
     for i, line in tqdm(enumerate(veri_test), ncols=100):
 

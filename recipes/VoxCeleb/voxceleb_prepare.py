@@ -259,14 +259,28 @@ def _get_utt_split_lists(
 
     print("Getting file list...")
     for data_folder in data_folders:
+        if not os.path.exists(verification_pairs_file):
+            # test_lst = []
+            test_spks = set([])
+        else:
+            test_lst = [
+                line.rstrip("\n").split(" ")[1]
+                for line in open(verification_pairs_file)
+            ]
+            test_lst = set(sorted(test_lst))
+            print('There are %d utterances in test trials!' % (len(test_lst)))
 
-        test_lst = [
-            line.rstrip("\n").split(" ")[1]
-            for line in open(verification_pairs_file)
-        ]
-        test_lst = set(sorted(test_lst))
+            # test_spks = [snt.split("/")[0] for snt in test_lst]
+            test_spks = set([snt.split("/")[1].split('-')[0] for snt in test_lst])
+            print('There are %d spks in test trials!' % (len(test_spks)))
 
-        test_spks = [snt.split("/")[0] for snt in test_lst]
+        # test_lst = [
+        #     line.rstrip("\n").split(" ")[1]
+        #     for line in open(verification_pairs_file)
+        # ]
+        # test_lst = set(sorted(test_lst))
+        #
+        # test_spks = [snt.split("/")[0] for snt in test_lst]
 
         path = os.path.join(data_folder, "wav", "**", "*.wav")
         if split_speaker:
@@ -287,24 +301,67 @@ def _get_utt_split_lists(
                 dev_lst.extend(audio_files_dict[spk_id])
         else:
             # avoid test speakers for train and dev splits
+            # audio_files_list = []
+            # pbar = tqdm(glob.glob(path, recursive=True))
+            # for f in pbar:
+            #     try:
+            #         spk_id = f.split("/wav/")[1].split("/")[0]
+            #     except ValueError:
+            #         logger.info(f"Malformed path: {f}")
+            #         continue
+            #     if spk_id not in test_spks:
+            #         audio_files_list.append(f)
             audio_files_list = []
-            pbar = tqdm(glob.glob(path, recursive=True))
+            audio_files_dict = {}
+            train_snts = []
+            dev_snts = []
+
+            wav_paths = glob.glob(path, recursive=True)
+            assert len(wav_paths) > 0
+            # if len(wav_paths) == 0:
+            #     path = os.path.join(data_folder, "data*", "**", "*.wav")
+            #     wav_paths = glob.glob(path, recursive=True)
+
+            pbar = tqdm(wav_paths, ncols=100)
             for f in pbar:
                 try:
-                    spk_id = f.split("/wav/")[1].split("/")[0]
+                    spk_id = f.split("/")[-3]  # .split("/")[0]
                 except ValueError:
                     logger.info(f"Malformed path: {f}")
                     continue
                 if spk_id not in test_spks:
-                    audio_files_list.append(f)
+                    audio_files_dict.setdefault(spk_id, []).append(f)
 
-            random.shuffle(audio_files_list)
-            split = int(0.01 * split_ratio[0] * len(audio_files_list))
-            train_snts = audio_files_list[:split]
-            dev_snts = audio_files_list[split:]
+            print('There are %d spks in train set!' % (len(audio_files_dict)))
+            train_spk = set()
+            dev_spk = set()
+            for spk_id in audio_files_dict:
+                spk_id_utts = audio_files_dict[spk_id]
+                random.shuffle(spk_id_utts)
+
+                train_split = int(max(np.ceil(0.01 * split_ratio[0] * len(spk_id_utts)), 1))
+                # valid_split = int(max(len(spk_id_utts)-train_split, 0))
+
+                for i in range(train_split):
+                    train_snts.append(spk_id_utts.pop())
+                    train_spk.add(spk_id)
+
+                for utts in spk_id_utts:
+                    dev_snts.append(utts)
+                    dev_spk.add(spk_id)
+
+            print('Split %d spks\'utterances for training and %d spks\'utterances for dev.' % (
+                len(train_spk), len(dev_spk)))
+
+            # random.shuffle(audio_files_list)
+            # split = int(0.01 * split_ratio[0] * len(audio_files_list))
+            # train_snts = audio_files_list[:split]
+            # dev_snts = audio_files_list[split:]
 
             train_lst.extend(train_snts)
             dev_lst.extend(dev_snts)
+
+            random.shuffle(train_lst)
 
     return train_lst, dev_lst
 
