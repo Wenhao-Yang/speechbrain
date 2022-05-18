@@ -329,12 +329,12 @@ if __name__ == "__main__":
     )
 
     # Training
-    with torch.autograd.detect_anomaly():
-        # brain.fit(...)
-        speaker_brain.fit(
-            speaker_brain.hparams.epoch_counter,
-            train_data,
-            valid_data,
-            train_loader_kwargs=hparams["dataloader_options"],
-            valid_loader_kwargs=hparams["dataloader_options"],
-        )
+    # with torch.autograd.detect_anomaly():
+    # brain.fit(...)
+    speaker_brain.fit(
+        speaker_brain.hparams.epoch_counter,
+        train_data,
+        valid_data,
+        train_loader_kwargs=hparams["dataloader_options"],
+        valid_loader_kwargs=hparams["dataloader_options"],
+    )
