@@ -169,7 +169,7 @@ modules:
 
 compute_cost: !new:speechbrain.nnet.losses.LogSoftmaxWrapper
     loss_fn: !new:speechbrain.nnet.losses.AdditiveAngularMargin
-        margin: 0.2
+        margin: 0.15
         scale: 30
 
 second_loss_ratio: 0
