@@ -443,7 +443,7 @@ class Brain:
             "find_unused_parameters": False,
             "jit_module_keys": None,
             "auto_mix_prec": False,
-            "max_grad_norm": 10.0,
+            "max_grad_norm": 5.0,
             "nonfinite_patience": 3,
             "noprogressbar": False,
             "ckpt_interval_minutes": 0,
