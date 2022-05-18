@@ -455,7 +455,7 @@ def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur,
         #       (str(os.getpid()), t_queue.qsize()), end='')
 
 def listener(q, total_num=10000):
-    pbar = tqdm(total=total_num)
+    pbar = tqdm(total=total_num, ncols=60)
     for item in iter(q.get, None):
      pbar.update()
 
@@ -496,7 +496,6 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
     t_queue = manager.Queue()
     e_queue = manager.Queue()
     q_queue = manager.Queue()
-
 
     # Processing all the wav files in the list
     # for wav_file in tqdm(wav_lst, dynamic_ncols=True):
@@ -555,7 +554,7 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
     length_pbar = len(wav_lst)
 
     # PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th)
-    nj = 12
+    nj = 16
     proc = Process(target=listener, args=(q_queue, length_pbar))
     proc.start()
     pool = Pool(processes=nj)
