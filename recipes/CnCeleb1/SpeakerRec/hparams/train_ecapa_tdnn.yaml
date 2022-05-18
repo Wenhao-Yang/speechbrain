@@ -9,7 +9,7 @@ __set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 
-output_folder: !ref results/ecapa_epoch30/<seed>_cn12_sp3_rop #_dist
+output_folder: !ref results/ecapa_epoch30/<seed>_cn12_sp3_rop_mix #_dist
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
@@ -39,7 +39,7 @@ delete_previous_ckpt: False
 
 # Training parameters
 number_of_epochs: 30
-batch_size: 32
+batch_size: 64
 lr: 0.001
 base_lr: 0.00000001
 sch_mode: triangular2
