@@ -261,16 +261,16 @@ def _get_utt_split_lists(
     for data_folder in data_folders:
         test_spks = set([])
         if os.path.exists(verification_pairs_file):
-            test_lst = [
-                line.rstrip("\n").split(" ")[1]
-                for line in open(verification_pairs_file)
-            ]
-            test_lst = set(sorted(test_lst))
-            print('There are %d utterances in test trials!' % (len(test_lst)))
+            # test_lst = [
+            #     line.rstrip("\n").split(" ")[1]
+            #     for line in open(verification_pairs_file)
+            # ]
+            # test_lst = set(sorted(test_lst))
+            # print('There are %d utterances in test trials!' % (len(test_lst)))
 
             # test_spks = [snt.split("/")[0] for snt in test_lst]
             # test_spks = set([snt.split("/")[1].split('-')[0] for snt in test_lst])
-            for snt in test_lst:
+            for snt in open(verification_pairs_file).readlines():
                 truth, enroll_path, eval_path = snt.split()
                 test_spks.add(enroll_path.split('/')[0])
                 test_spks.add(eval_path.split('/')[0])
