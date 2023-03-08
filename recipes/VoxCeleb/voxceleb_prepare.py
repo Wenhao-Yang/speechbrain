@@ -421,7 +421,7 @@ def _get_utt_split_lists_fromscp(save_folder, split_ratio, verification_pairs_fi
     with open(os.path.join(save_folder, WAV_FILE), 'r') as f:
         for l in f.readlines():
             uid, upath = l.split()
-            spk_id = uid.aplit('-')[0]
+            spk_id = uid.split('-')[0]
             if spk_id not in test_spks:
                 audio_files_dict.setdefault(spk_id, []).append(upath)
 
