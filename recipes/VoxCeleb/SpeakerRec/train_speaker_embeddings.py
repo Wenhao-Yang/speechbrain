@@ -215,7 +215,6 @@ if __name__ == "__main__":
 
     # Dataset prep (parsing VoxCeleb and annotation into csv files)
     from voxceleb_prepare import prepare_voxceleb  # noqa
-
     run_on_main(
         prepare_voxceleb,
         kwargs={

@@ -141,12 +141,12 @@ def prepare_voxceleb(
 
     # Split data into 90% train and 10% validation (verification split)
     if os.path.exists(os.path.join(save_folder, WAV_FILE)):
-        print(' => create lists from kaldi scripts')
+        print(' => Create lists from kaldi scripts')
         wav_lst_train, wav_lst_dev = _get_utt_split_lists_fromscp(
             save_folder, split_ratio, verification_pairs_file,
         )
     else:
-        print(' => create lists from dirs')
+        print(' => Create lists from dirs')
         wav_lst_train, wav_lst_dev = _get_utt_split_lists(
             data_folder, split_ratio, verification_pairs_file, split_speaker
         )
