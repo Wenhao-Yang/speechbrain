@@ -281,7 +281,7 @@ def _get_utt_split_lists(
         path = os.path.join(data_folder, "test", "aac", "**", "*.wav")
         wav_paths = glob.glob(path, recursive=True)
         if len(wav_paths) > 0:
-            print('There are %d spks in test set!' % (len(wav_paths)))
+            print('There are %d wavfiles in test set!' % (len(wav_paths)))
             for f in wav_paths:
                 try:
                     test_spks.add(f.split("/")[-3])  # .split("/")[0]
