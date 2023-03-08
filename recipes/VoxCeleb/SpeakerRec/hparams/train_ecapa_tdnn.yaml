@@ -9,7 +9,7 @@ __set_seed: !apply:torch.manual_seed [ !ref <seed> ]
 __set_seed_rand: !apply:random.seed [ !ref <seed> ]
 __set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
 
-output_folder: !ref results/ecapa512_vox2_spect_em256/<seed>
+output_folder: !ref results/ecapa_official/<seed>
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
@@ -36,9 +36,9 @@ delete_previous_ckpt: False
 
 # Training parameters
 number_of_epochs: 40
-batch_size: 64
-lr: 0.1
-base_lr: 0.00001
+batch_size: 192
+lr: 0.001
+base_lr: 0.00000001
 max_lr: !ref <lr>
 step_size: 65000
 sample_rate: 16000
@@ -46,18 +46,17 @@ sentence_len: 3.0 # seconds
 chunk_size: 3.0 # seconds
 shuffle: True
 random_chunk: True
-split_ratio: [ 90, 10 ]
+split_ratio: [ 95, 5 ]
 
 # Feature parameters
-n_mels: 161
+n_mels: 80
 left_frames: 0
 right_frames: 0
 deltas: False
 
 # Number of speakers
 out_n_neurons: 5994 #1211 for vox1  # 5994 for vox2, 7205 for vox1+vox2
-embedding_size: 256
-
+embedding_size: 192
 
 dataloader_options:
     batch_size: !ref <batch_size>
@@ -65,14 +64,14 @@ dataloader_options:
     num_workers: 4
 
 # Functions
-#compute_features: !new:speechbrain.lobes.features.Fbank
-#    n_mels: !ref <n_mels>
-#    left_frames: !ref <left_frames>
-#    right_frames: !ref <right_frames>
-#    deltas: !ref <deltas>
-compute_features: !new:speechbrain.lobes.features.Spectrogram
-    n_fft: 320
-    win_length: 20
+compute_features: !new:speechbrain.lobes.features.Fbank
+   n_mels: !ref <n_mels>
+   left_frames: !ref <left_frames>
+   right_frames: !ref <right_frames>
+   deltas: !ref <deltas>
+# compute_features: !new:speechbrain.lobes.features.Spectrogram
+#     n_fft: 320
+#     win_length: 20
 
 #    channels: [ 1024, 1024, 1024, 1024, 3072 ]
 
@@ -143,7 +142,6 @@ augment_wavedrop: !new:speechbrain.lobes.augment.TimeDomainSpecAugment
 #]
 
 augment_pipeline: [ ]
-
 concat_augment: True
 
 mean_var_norm: !new:speechbrain.processing.features.InputNormalization
@@ -169,23 +167,23 @@ compute_cost: !new:speechbrain.nnet.losses.LogSoftmaxWrapper
 
 compute_error: !name:speechbrain.nnet.losses.classification_error
 
-  #opt_class: !name:torch.optim.Adam
-  #    lr: !ref <lr>
-  #    weight_decay: 0.000002
+  opt_class: !name:torch.optim.Adam
+     lr: !ref <lr>
+     weight_decay: 0.00002
 
-opt_class: !name:torch.optim.SGD
-    lr: !ref <lr>
-    momentum: 0.9
-    weight_decay: 0.00002
+# opt_class: !name:torch.optim.SGD
+#     lr: !ref <lr>
+#     momentum: 0.9
+#     weight_decay: 0.00002
 
-#lr_annealing: !new:speechbrain.nnet.schedulers.CyclicLRScheduler
-#    base_lr: !ref <base_lr>
-#    max_lr: !ref <max_lr>
-#    step_size: !ref <step_size>
-lr_annealing: !new:speechbrain.nnet.schedulers.ReduceLROnPlateau
-    lr_min: !ref <base_lr>
-    factor: 0.1
-    patience: 2
+lr_annealing: !new:speechbrain.nnet.schedulers.CyclicLRScheduler
+   base_lr: !ref <base_lr>
+   max_lr: !ref <max_lr>
+   step_size: !ref <step_size>
+# lr_annealing: !new:speechbrain.nnet.schedulers.ReduceLROnPlateau
+#     lr_min: !ref <base_lr>
+#     factor: 0.1
+#     patience: 2
 
 
 # Logging + checkpoints
