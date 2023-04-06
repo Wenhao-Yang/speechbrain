@@ -21,7 +21,7 @@ import torchaudio
 import speechbrain as sb
 from tqdm.contrib import tqdm
 from hyperpyyaml import load_hyperpyyaml
-from speechbrain.utils.metric_stats import EER, minDCF
+from speechbrain.utils.metric_stats import EER, evaluate_kaldi_eer, minDCF
 from speechbrain.utils.data_utils import download_file
 from speechbrain.utils.distributed import run_on_main
 import pickle
