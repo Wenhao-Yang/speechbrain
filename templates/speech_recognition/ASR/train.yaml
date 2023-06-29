@@ -43,6 +43,7 @@ pretrained_path: speechbrain/asr-crdnn-rnnlm-librispeech
 train_annotation: ../train.json
 valid_annotation: ../valid.json
 test_annotation: ../test.json
+skip_prep: False
 
 # The train logger writes training statistics to a file, as well as stdout.
 train_logger: !new:speechbrain.utils.train_logger.FileTrainLogger
@@ -94,7 +95,6 @@ output_neurons: 1000  # Number of tokens (same as LM)
 blank_index: 0
 bos_index: 0
 eos_index: 0
-unk_index: 0
 
 # Decoding parameters
 min_decode_ratio: 0.0

@@ -5,13 +5,14 @@
 # ############################################################################
 
 output_folder: !ref results/1K_subword_unigram_960h_LM/
-train_log: !ref <output_folder>/train_log.txt
+# train_log: !ref <output_folder>/train_log.txt
 
 # Data files
 data_folder: !PLACEHOLDER # e.g, /path/to/LibriSpeech
 train_splits: ["train-clean-100", "train-clean-360", "train-other-500"]
 dev_splits: ["dev-clean"]
 test_splits: ["test-clean", "test-other"]
+skip_prep: False
 train_csv: !ref <output_folder>/train.csv
 valid_csv: !ref <output_folder>/dev-clean.csv
 

@@ -30,9 +30,10 @@ Authors
  * Jianyuan Zhong 2020
  * Mirco Ravanelli 2020
  * Peter Plantinga 2020
- * Samuele Cornell 2020
- * Titouan Parcollet 2021
+ * Samuele Cornell 2020, 2021, 2022
+ * Titouan Parcollet 2021, 2022
 """
+
 import os
 import sys
 import torch
@@ -72,8 +73,9 @@ class ASR(sb.core.Brain):
 
         # forward modules
         src = self.modules.CNN(feats)
+
         enc_out, pred = self.modules.Transformer(
-            src, tokens_bos, wav_lens, pad_idx=self.hparams.pad_index
+            src, tokens_bos, wav_lens, pad_idx=self.hparams.pad_index,
         )
 
         # output layer for ctc log-probabilities
@@ -119,8 +121,14 @@ class ASR(sb.core.Brain):
 
         loss_seq = self.hparams.seq_cost(
             p_seq, tokens_eos, length=tokens_eos_lens
-        )
-        loss_ctc = self.hparams.ctc_cost(p_ctc, tokens, wav_lens, tokens_lens)
+        ).sum()
+
+        # now as training progresses we use real prediction from the prev step instead of teacher forcing
+
+        loss_ctc = self.hparams.ctc_cost(
+            p_ctc, tokens, wav_lens, tokens_lens
+        ).sum()
+
         loss = (
             self.hparams.ctc_weight * loss_ctc
             + (1 - self.hparams.ctc_weight) * loss_seq
@@ -143,29 +151,20 @@ class ASR(sb.core.Brain):
             self.acc_metric.append(p_seq, tokens_eos, tokens_eos_lens)
         return loss
 
-    def fit_batch(self, batch):
-        """Train the parameters given a single batch in input"""
-        # check if we need to switch optimizer
-        # if so change the optimizer from Adam to SGD
-        self.check_and_reset_optimizer()
+    def on_evaluate_start(self, max_key=None, min_key=None):
+        """perform checkpoint averge if needed"""
+        super().on_evaluate_start()
 
-        predictions = self.compute_forward(batch, sb.Stage.TRAIN)
-        loss = self.compute_objectives(predictions, batch, sb.Stage.TRAIN)
+        ckpts = self.checkpointer.find_checkpoints(
+            max_key=max_key, min_key=min_key
+        )
+        ckpt = sb.utils.checkpoints.average_checkpoints(
+            ckpts, recoverable_name="model", device=self.device
+        )
 
-        # normalize the loss by gradient_accumulation step
-        (loss / self.hparams.gradient_accumulation).backward()
-
-        if self.step % self.hparams.gradient_accumulation == 0:
-            # gradient clipping & early stop if loss is not fini
-            self.check_gradients(loss)
-
-            self.optimizer.step()
-            self.optimizer.zero_grad()
-
-            # anneal lr every update
-            self.hparams.noam_annealing(self.optimizer)
-
-        return loss.detach()
+        self.hparams.model.load_state_dict(ckpt, strict=True)
+        self.hparams.model.eval()
+        print("Loaded the average")
 
     def evaluate_batch(self, batch, stage):
         """Computations needed for validation/test batches"""
@@ -199,16 +198,9 @@ class ASR(sb.core.Brain):
         # log stats and save checkpoint at end-of-epoch
         if stage == sb.Stage.VALID and sb.utils.distributed.if_main_process():
 
-            # report different epoch stages according current stage
-            current_epoch = self.hparams.epoch_counter.current
-            if current_epoch <= self.hparams.stage_one_epochs:
-                lr = self.hparams.noam_annealing.current_lr
-                steps = self.hparams.noam_annealing.n_steps
-                optimizer = self.optimizer.__class__.__name__
-            else:
-                lr = self.hparams.lr_sgd
-                steps = -1
-                optimizer = self.optimizer.__class__.__name__
+            lr = self.hparams.noam_annealing.current_lr
+            steps = self.optimizer_step
+            optimizer = self.optimizer.__class__.__name__
 
             epoch_stats = {
                 "epoch": epoch,
@@ -244,61 +236,50 @@ class ASR(sb.core.Brain):
                 num_to_keep=1,
             )
 
-    def check_and_reset_optimizer(self):
-        """reset the optimizer if training enters stage 2"""
-        current_epoch = self.hparams.epoch_counter.current
-        if not hasattr(self, "switched"):
-            self.switched = False
-            if isinstance(self.optimizer, torch.optim.SGD):
-                self.switched = True
+    def fit_batch(self, batch):
 
-        if self.switched is True:
-            return
+        should_step = self.step % self.grad_accumulation_factor == 0
+        # Managing automatic mixed precision
+        if self.auto_mix_prec:
+            with torch.autocast(torch.device(self.device).type):
+                outputs = self.compute_forward(batch, sb.Stage.TRAIN)
 
-        if current_epoch > self.hparams.stage_one_epochs:
-            self.optimizer = self.hparams.SGD(self.modules.parameters())
+            # Losses are excluded from mixed precision to avoid instabilities
+            loss = self.compute_objectives(outputs, batch, sb.Stage.TRAIN)
+            with self.no_sync(not should_step):
+                self.scaler.scale(
+                    loss / self.grad_accumulation_factor
+                ).backward()
+            if should_step:
+                self.scaler.unscale_(self.optimizer)
+                if self.check_gradients(loss):
+                    self.scaler.step(self.optimizer)
+                self.scaler.update()
+                self.zero_grad()
+                self.optimizer_step += 1
+                self.hparams.noam_annealing(self.optimizer)
+        else:
+            if self.bfloat16_mix_prec:
+                with torch.autocast(
+                    device_type=torch.device(self.device).type,
+                    dtype=torch.bfloat16,
+                ):
+                    outputs = self.compute_forward(batch, sb.TRAIN)
+                    loss = self.compute_objectives(outputs, batch, sb.TRAIN)
+            else:
+                outputs = self.compute_forward(batch, sb.TRAIN)
+                loss = self.compute_objectives(outputs, batch, sb.TRAIN)
+            with self.no_sync(not should_step):
+                (loss / self.grad_accumulation_factor).backward()
+            if should_step:
+                if self.check_gradients(loss):
+                    self.optimizer.step()
+                self.zero_grad()
+                self.optimizer_step += 1
+                self.hparams.noam_annealing(self.optimizer)
 
-            if self.checkpointer is not None:
-                self.checkpointer.add_recoverable("optimizer", self.optimizer)
-
-            self.switched = True
-
-    def on_fit_start(self):
-        """Initialize the right optimizer on the training start"""
-        super().on_fit_start()
-
-        # if the model is resumed from stage two, reinitialize the optimizer
-        current_epoch = self.hparams.epoch_counter.current
-        current_optimizer = self.optimizer
-        if current_epoch > self.hparams.stage_one_epochs:
-            del self.optimizer
-            self.optimizer = self.hparams.SGD(self.modules.parameters())
-
-            # Load latest checkpoint to resume training if interrupted
-            if self.checkpointer is not None:
-
-                # do not reload the weights if training is interrupted right before stage 2
-                group = current_optimizer.param_groups[0]
-                if "momentum" not in group:
-                    return
-
-                self.checkpointer.recover_if_possible(
-                    device=torch.device(self.device)
-                )
-
-    def on_evaluate_start(self, max_key=None, min_key=None):
-        """perform checkpoint averge if needed"""
-        super().on_evaluate_start()
-
-        ckpts = self.checkpointer.find_checkpoints(
-            max_key=max_key, min_key=min_key
-        )
-        ckpt = sb.utils.checkpoints.average_checkpoints(
-            ckpts, recoverable_name="model", device=self.device
-        )
-
-        self.hparams.model.load_state_dict(ckpt, strict=True)
-        self.hparams.model.eval()
+        self.on_fit_batch_end(batch, outputs, loss, should_step)
+        return loss.detach().cpu()
 
 
 def dataio_prepare(hparams):
@@ -347,6 +328,7 @@ def dataio_prepare(hparams):
         )
 
     datasets = [train_data, valid_data] + [i for k, i in test_datasets.items()]
+    valtest_datasets = [valid_data] + [i for k, i in test_datasets.items()]
 
     # We get the tokenizer as we need it to encode the labels when creating
     # mini-batches.
@@ -359,7 +341,22 @@ def dataio_prepare(hparams):
         sig = sb.dataio.dataio.read_audio(wav)
         return sig
 
-    sb.dataio.dataset.add_dynamic_item(datasets, audio_pipeline)
+    sb.dataio.dataset.add_dynamic_item(valtest_datasets, audio_pipeline)
+
+    @sb.utils.data_pipeline.takes("wav")
+    @sb.utils.data_pipeline.provides("sig")
+    def audio_pipeline_train(wav):
+        # Speed Perturb is done here so it is multi-threaded with the
+        # workers of the dataloader (faster).
+        if hparams["speed_perturb"]:
+            sig = sb.dataio.dataio.read_audio(wav)
+
+            sig = hparams["speed_perturb"](sig.unsqueeze(0)).squeeze(0)
+        else:
+            sig = sb.dataio.dataio.read_audio(wav)
+        return sig
+
+    sb.dataio.dataset.add_dynamic_item([train_data], audio_pipeline_train)
 
     # 3. Define text pipeline:
     @sb.utils.data_pipeline.takes("wrd")
@@ -383,7 +380,43 @@ def dataio_prepare(hparams):
     sb.dataio.dataset.set_output_keys(
         datasets, ["id", "sig", "wrd", "tokens_bos", "tokens_eos", "tokens"],
     )
-    return train_data, valid_data, test_datasets, tokenizer
+
+    # 5. If Dynamic Batching is used, we instantiate the needed samplers.
+    train_batch_sampler = None
+    valid_batch_sampler = None
+    if hparams["dynamic_batching"]:
+        from speechbrain.dataio.sampler import DynamicBatchSampler  # noqa
+
+        dynamic_hparams = hparams["dynamic_batch_sampler"]
+        num_buckets = dynamic_hparams["num_buckets"]
+
+        train_batch_sampler = DynamicBatchSampler(
+            train_data,
+            dynamic_hparams["max_batch_len"],
+            num_buckets=num_buckets,
+            length_func=lambda x: x["duration"],
+            shuffle=dynamic_hparams["shuffle_ex"],
+            batch_ordering=dynamic_hparams["batch_ordering"],
+            max_batch_ex=dynamic_hparams["max_batch_ex"],
+        )
+
+        valid_batch_sampler = DynamicBatchSampler(
+            valid_data,
+            dynamic_hparams["max_batch_len_val"],
+            num_buckets=num_buckets,
+            length_func=lambda x: x["duration"],
+            shuffle=dynamic_hparams["shuffle_ex"],
+            batch_ordering=dynamic_hparams["batch_ordering"],
+        )
+
+    return (
+        train_data,
+        valid_data,
+        test_datasets,
+        tokenizer,
+        train_batch_sampler,
+        valid_batch_sampler,
+    )
 
 
 if __name__ == "__main__":
@@ -392,7 +425,7 @@ if __name__ == "__main__":
     with open(hparams_file) as fin:
         hparams = load_hyperpyyaml(fin, overrides)
 
-    # If distributed_launch=True then
+    # If --distributed_launch then
     # create ddp_group with the right communication protocol
     sb.utils.distributed.ddp_init_group(run_opts)
 
@@ -414,15 +447,22 @@ if __name__ == "__main__":
             "tr_splits": hparams["train_splits"],
             "dev_splits": hparams["dev_splits"],
             "te_splits": hparams["test_splits"],
-            "save_folder": hparams["data_folder"],
+            "save_folder": hparams["output_folder"],
             "merge_lst": hparams["train_splits"],
-            "merge_name": hparams["train_csv"],
+            "merge_name": "train.csv",
             "skip_prep": hparams["skip_prep"],
         },
     )
 
     # here we create the datasets objects as well as tokenization and encoding
-    train_data, valid_data, test_datasets, tokenizer = dataio_prepare(hparams)
+    (
+        train_data,
+        valid_data,
+        test_datasets,
+        tokenizer,
+        train_bsampler,
+        valid_bsampler,
+    ) = dataio_prepare(hparams)
 
     # We download the pretrained LM from HuggingFace (or elsewhere depending on
     # the path given in the YAML file). The tokenizer is loaded at the same time.
@@ -440,14 +480,25 @@ if __name__ == "__main__":
 
     # adding objects to trainer:
     asr_brain.tokenizer = hparams["tokenizer"]
+    train_dataloader_opts = hparams["train_dataloader_opts"]
+    valid_dataloader_opts = hparams["valid_dataloader_opts"]
+
+    if train_bsampler is not None:
+        train_dataloader_opts = {
+            "batch_sampler": train_bsampler,
+            "num_workers": hparams["num_workers"],
+        }
+
+    if valid_bsampler is not None:
+        valid_dataloader_opts = {"batch_sampler": valid_bsampler}
 
     # Training
     asr_brain.fit(
         asr_brain.hparams.epoch_counter,
         train_data,
         valid_data,
-        train_loader_kwargs=hparams["train_dataloader_opts"],
-        valid_loader_kwargs=hparams["valid_dataloader_opts"],
+        train_loader_kwargs=train_dataloader_opts,
+        valid_loader_kwargs=valid_dataloader_opts,
     )
 
     # Testing

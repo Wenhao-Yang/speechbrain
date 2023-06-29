@@ -10,7 +10,7 @@ Example
 -------
 >>> import torch
 >>> from speechbrain.dataio.dataio import read_audio
->>> signal =read_audio('samples/audio_samples/example1.wav')
+>>> signal =read_audio('tests/samples/single-mic/example1.wav')
 >>> signal = signal.unsqueeze(0)
 >>> compute_STFT = STFT(
 ...     sample_rate=16000, win_length=25, hop_length=10, n_fft=400
@@ -36,7 +36,6 @@ Authors
 import math
 import torch
 import logging
-from packaging import version
 from speechbrain.utils.checkpoints import (
     mark_as_saver,
     mark_as_loader,
@@ -145,31 +144,18 @@ class STFT(torch.nn.Module):
             x = x.transpose(1, 2)
             x = x.reshape(or_shape[0] * or_shape[2], or_shape[1])
 
-        if version.parse(torch.__version__) <= version.parse("1.6.0"):
-            stft = torch.stft(
-                x,
-                self.n_fft,
-                self.hop_length,
-                self.win_length,
-                self.window.to(x.device),
-                self.center,
-                self.pad_mode,
-                self.normalized_stft,
-                self.onesided,
-            )
-        else:
-            stft = torch.stft(
-                x,
-                self.n_fft,
-                self.hop_length,
-                self.win_length,
-                self.window.to(x.device),
-                self.center,
-                self.pad_mode,
-                self.normalized_stft,
-                self.onesided,
-                return_complex=False,
-            )
+        stft = torch.stft(
+            x,
+            self.n_fft,
+            self.hop_length,
+            self.win_length,
+            self.window.to(x.device),
+            self.center,
+            self.pad_mode,
+            self.normalized_stft,
+            self.onesided,
+            return_complex=False,
+        )
 
         # Retrieving the original dimensionality (batch,time, channels)
         if len(or_shape) == 3:
@@ -324,7 +310,9 @@ class ISTFT(torch.nn.Module):
         return istft
 
 
-def spectral_magnitude(stft, power=1, log=False, eps=1e-14):
+def spectral_magnitude(
+    stft, power: int = 1, log: bool = False, eps: float = 1e-14
+):
     """Returns the magnitude of a complex spectrogram.
 
     Arguments
@@ -836,7 +824,9 @@ class Deltas(torch.nn.Module):
 
         # Derivative estimation (with a fixed convolutional kernel)
         delta_coeff = (
-            torch.nn.functional.conv1d(x, self.kernel, groups=x.shape[1])
+            torch.nn.functional.conv1d(
+                x, self.kernel.to(x.device), groups=x.shape[1]
+            )
             / self.denom
         )
 

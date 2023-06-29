@@ -34,7 +34,7 @@ ckpt_interval_minutes: 60
 auto_mix_prec: True # Set it to True for mixed precision
 test_only: False
 num_spks: 2
-progressbar: True
+noprogressbar: False
 save_audio: False # Save estimated sources on disk
 sample_rate: 8000
 
@@ -57,7 +57,6 @@ use_wham_noise: False
 # Parameters for data augmentation
 use_wavedrop: False
 use_speedperturb: True
-use_speedperturb_sameforeachsource: False
 use_rand_shift: False
 min_shift: -8000
 max_shift: 8000
@@ -84,6 +83,7 @@ N_encoder_out: 256
 out_channels: 256
 kernel_size: 16
 kernel_stride: 8
+d_ffn: 1024
 
 # Dataloader options
 dataloader_opts:
@@ -101,7 +101,7 @@ SBtfintra: !new:speechbrain.lobes.models.dual_path.SBTransformerBlock
     num_layers: 8
     d_model: !ref <out_channels>
     nhead: 8
-    d_ffn: 1024
+    d_ffn: !ref <d_ffn>
     dropout: 0
     use_positional_encoding: True
     norm_before: True
@@ -110,7 +110,7 @@ SBtfinter: !new:speechbrain.lobes.models.dual_path.SBTransformerBlock
     num_layers: 8
     d_model: !ref <out_channels>
     nhead: 8
-    d_ffn: 1024
+    d_ffn: !ref <d_ffn>
     dropout: 0
     use_positional_encoding: True
     norm_before: True
