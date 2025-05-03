@@ -8,13 +8,16 @@ import os
 import csv
 import logging
 import glob
+import pdb
 import random
 import shutil
 import sys  # noqa F401
 import numpy as np
 import torch
+import soundfile as sf
 import torchaudio
 from tqdm.contrib import tqdm
+from multiprocessing import Pool, Manager, Process
 from speechbrain.dataio.dataio import (
     load_pkl,
     save_pkl,
@@ -22,6 +25,8 @@ from speechbrain.dataio.dataio import (
 
 logger = logging.getLogger(__name__)
 OPT_FILE = "opt_voxceleb_prepare.pkl"
+WAV_FILE = "wav.scp"
+DUR_FILE = "utt2dur"
 TRAIN_CSV = "train.csv"
 DEV_CSV = "dev.csv"
 TEST_CSV = "test.csv"
@@ -131,23 +136,43 @@ def prepare_voxceleb(
         data_folder = [data_folder]
 
     # _check_voxceleb1_folders(data_folder, splits)
-
     msg = "\tCreating csv file for the VoxCeleb Dataset.."
     logger.info(msg)
 
     # Split data into 90% train and 10% validation (verification split)
-    wav_lst_train, wav_lst_dev = _get_utt_split_lists(
-        data_folder, split_ratio, verification_pairs_file, split_speaker
-    )
+    if os.path.exists(os.path.join(save_folder, WAV_FILE)):
+        print(' => Create lists from kaldi scripts')
+        wav_lst_train, wav_lst_dev = _get_utt_split_lists_fromscp(
+            save_folder, split_ratio, verification_pairs_file,
+        )
+    else:
+        print(' => Create lists from dirs')
+        wav_lst_train, wav_lst_dev = _get_utt_split_lists(
+            data_folder, split_ratio, verification_pairs_file, split_speaker
+        )
 
     # Creating csv file for training data
     if "train" in splits:
-        prepare_csv(
-            seg_dur, wav_lst_train, save_csv_train, random_segment, amp_th
-        )
+        if os.path.exists(os.path.join(save_folder, DUR_FILE)):
+            utt2dur_file = os.path.join(save_folder, DUR_FILE)
+            prepare_csv_fromscp(
+                utt2dur_file,
+                seg_dur, wav_lst_train, save_csv_train, random_segment, amp_th
+            )
+        else:
+            prepare_csv(
+                seg_dur, wav_lst_train, save_csv_train, random_segment, amp_th
+            )
 
     if "dev" in splits:
-        prepare_csv(seg_dur, wav_lst_dev, save_csv_dev, random_segment, amp_th)
+        if os.path.exists(os.path.join(save_folder, DUR_FILE)):
+            utt2dur_file = os.path.join(save_folder, DUR_FILE)
+            prepare_csv_fromscp(
+                utt2dur_file,
+                seg_dur, wav_lst_dev, save_csv_dev, random_segment, amp_th
+            )
+        else:
+            prepare_csv(seg_dur, wav_lst_dev, save_csv_dev, random_segment, amp_th)
 
     # For PLDA verification
     if "test" in splits:
@@ -256,14 +281,41 @@ def _get_utt_split_lists(
 
     print("Getting file list...")
     for data_folder in data_folders:
+        test_spks = set([])
+        if os.path.exists(verification_pairs_file):
+            # test_lst = [
+            #     line.rstrip("\n").split(" ")[1]
+            #     for line in open(verification_pairs_file)
+            # ]
+            # test_lst = set(sorted(test_lst))
+            # print('There are %d utterances in test trials!' % (len(test_lst)))
 
-        test_lst = [
-            line.rstrip("\n").split(" ")[1]
-            for line in open(verification_pairs_file)
-        ]
-        test_lst = set(sorted(test_lst))
+            # test_spks = [snt.split("/")[0] for snt in test_lst]
+            # test_spks = set([snt.split("/")[1].split('-')[0] for snt in test_lst])
+            for snt in open(verification_pairs_file).readlines():
+                truth, enroll_path, eval_path = snt.split()
+                test_spks.add(enroll_path.split('/')[0])
+                test_spks.add(eval_path.split('/')[0])
 
-        test_spks = [snt.split("/")[0] for snt in test_lst]
+            print('There are %d spks in test trials!' % (len(test_spks)))
+
+        # / home / yangwenhao / dataset / voxceleb2 / test / aac
+        path = os.path.join(data_folder, "test", "aac", "**", "*.wav")
+        wav_paths = glob.glob(path, recursive=True)
+        if len(wav_paths) > 0:
+            print('There are %d wavfiles in test set!' % (len(wav_paths)))
+            for f in wav_paths:
+                try:
+                    test_spks.add(f.split("/")[-3])  # .split("/")[0]
+                except ValueError:
+                    logger.info(f"Malformed path: {f}")
+                    continue
+        # test_lst = [
+        #     line.rstrip("\n").split(" ")[1]
+        #     for line in open(verification_pairs_file)
+        # ]
+        # test_lst = set(sorted(test_lst))
+        # test_spks = [snt.split("/")[0] for snt in test_lst]
 
         path = os.path.join(data_folder, "wav", "**", "*.wav")
         if split_speaker:
@@ -284,23 +336,116 @@ def _get_utt_split_lists(
                 dev_lst.extend(audio_files_dict[spk_id])
         else:
             # avoid test speakers for train and dev splits
+            # audio_files_list = []
+            # pbar = tqdm(glob.glob(path, recursive=True))
+            # for f in pbar:
+            #     try:
+            #         spk_id = f.split("/wav/")[1].split("/")[0]
+            #     except ValueError:
+            #         logger.info(f"Malformed path: {f}")
+            #         continue
+            #     if spk_id not in test_spks:
+            #         audio_files_list.append(f)
             audio_files_list = []
-            for f in glob.glob(path, recursive=True):
+            audio_files_dict = {}
+            train_snts = []
+            dev_snts = []
+
+            wav_paths = glob.glob(path, recursive=True)
+            assert len(wav_paths) > 0
+            # if len(wav_paths) == 0:
+            #     path = os.path.join(data_folder, "data*", "**", "*.wav")
+            #     wav_paths = glob.glob(path, recursive=True)
+
+            pbar = tqdm(wav_paths, ncols=100)
+            for f in pbar:
                 try:
-                    spk_id = f.split("/wav/")[1].split("/")[0]
+                    spk_id = f.split("/")[-3]  # .split("/")[0]
                 except ValueError:
                     logger.info(f"Malformed path: {f}")
                     continue
                 if spk_id not in test_spks:
-                    audio_files_list.append(f)
+                    audio_files_dict.setdefault(spk_id, []).append(f)
 
-            random.shuffle(audio_files_list)
-            split = int(0.01 * split_ratio[0] * len(audio_files_list))
-            train_snts = audio_files_list[:split]
-            dev_snts = audio_files_list[split:]
+            print('There are %d spks in train set!' % (len(audio_files_dict)))
+            train_spk = set()
+            dev_spk = set()
+            for spk_id in audio_files_dict:
+                spk_id_utts = audio_files_dict[spk_id]
+                random.shuffle(spk_id_utts)
+
+                train_split = int(max(np.ceil(0.01 * split_ratio[0] * len(spk_id_utts)), 1))
+                # valid_split = int(max(len(spk_id_utts)-train_split, 0))
+
+                for i in range(train_split):
+                    train_snts.append(spk_id_utts.pop())
+                    train_spk.add(spk_id)
+
+                for utts in spk_id_utts:
+                    dev_snts.append(utts)
+                    dev_spk.add(spk_id)
+
+            print('Split %d spks\'utterances for training and %d spks\'utterances for dev.' % (
+                len(train_spk), len(dev_spk)))
+
+            # random.shuffle(audio_files_list)
+            # split = int(0.01 * split_ratio[0] * len(audio_files_list))
+            # train_snts = audio_files_list[:split]
+            # dev_snts = audio_files_list[split:]
 
             train_lst.extend(train_snts)
             dev_lst.extend(dev_snts)
+
+            random.shuffle(train_lst)
+
+    return train_lst, dev_lst
+
+
+def _get_utt_split_lists_fromscp(save_folder, split_ratio, verification_pairs_file):
+    """
+    Tot. number of speakers vox1= 1211. Tot. number of speakers vox2= 5994.
+    Splits the audio file list into train and dev.
+    This function automatically removes verification test files from the training and dev set (if any).
+    """
+    test_spks = set([])
+    if os.path.exists(verification_pairs_file):
+        for snt in open(verification_pairs_file).readlines():
+            _, enroll_path, eval_path = snt.split()
+            test_spks.add(enroll_path.split('/')[0])
+            test_spks.add(eval_path.split('/')[0])
+        print('There are %d spks in test trials!' % (len(test_spks)))
+
+    # print("Getting file list...")
+    audio_files_dict = {}
+
+    with open(os.path.join(save_folder, WAV_FILE), 'r') as f:
+        for l in f.readlines():
+            uid, upath = l.split()
+            spk_id = uid.split('-')[0]
+            if spk_id not in test_spks:
+                audio_files_dict.setdefault(spk_id, []).append(upath)
+
+    train_lst, dev_lst = [], []
+    print('There are %d spks in train set!' % (len(audio_files_dict)))
+    train_spk = set()
+    dev_spk = set()
+    for spk_id in audio_files_dict:
+        spk_id_utts = audio_files_dict[spk_id]
+        random.shuffle(spk_id_utts)
+        train_split = int(max(np.ceil(0.01 * split_ratio[0] * len(spk_id_utts)), 1))
+
+        for i in range(train_split):
+            train_lst.append(spk_id_utts.pop())
+            train_spk.add(spk_id)
+
+        for utts in spk_id_utts:
+            dev_lst.append(utts)
+            dev_spk.add(spk_id)
+
+    print('Split %d spks\'utterances for training and %d spks\'utterances for dev.' % (
+        len(train_spk), len(dev_spk)))
+
+    random.shuffle(train_lst)
 
     return train_lst, dev_lst
 
@@ -318,6 +463,72 @@ def _get_chunks(seg_dur, audio_id, audio_duration):
 
     return chunk_lst
 
+
+def PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th, q_queue):
+    while True:
+        lock_t.acquire()  # 加上锁
+        # print(os.getpid(), " acqing lock i")
+        if not t_queue.empty():
+            wav_file = t_queue.get()
+            lock_t.release()
+            q_queue.put(1)
+        else:
+            lock_t.release()
+            break
+
+        try:
+            [spk_id, sess_id, utt_id] = wav_file.split("/")[-3:]
+        except ValueError:
+            logger.info(f"Malformed path: {wav_file}")
+            continue
+        audio_id = my_sep.join([spk_id, sess_id, utt_id.split(".")[0]])
+
+        # Reading the signal (to retrieve duration in seconds)
+        # signal, fs = sf.read(wav_file, dtype='float')
+        signal, fs = torchaudio.load(wav_file)
+        signal = np.array(signal)
+        if len(signal.shape) == 2:
+            signal = signal.mean(axis=0)
+
+        if random_segment:
+            audio_duration = signal.shape[0] / SAMPLERATE
+            start_sample = 0
+            stop_sample = signal.shape[0]
+
+            # Composition of the csv_line
+            csv_line = [audio_id, str(audio_duration), wav_file, start_sample, stop_sample, spk_id]
+            e_queue.put(csv_line)
+        else:
+            audio_duration = signal.shape[0] / SAMPLERATE
+            uniq_chunks_list = _get_chunks(seg_dur, audio_id, audio_duration)
+
+            for chunk in uniq_chunks_list:
+                s, e = chunk.split("_")[-2:]
+                start_sample = int(float(s) * SAMPLERATE)
+                end_sample = int(float(e) * SAMPLERATE)
+
+                #  Avoid chunks with very small energy
+                mean_sig = np.abs(signal[start_sample:end_sample]).mean()
+                if mean_sig < amp_th:
+                    continue
+                # print("9: mean")
+                # Composition of the csv_line
+                csv_line = [
+                    chunk,
+                    str(audio_duration),
+                    wav_file,
+                    start_sample,
+                    end_sample,
+                    spk_id,
+                ]
+                e_queue.put(csv_line)
+        # print('\rProcess [{:8>s}]: [{:>8d}] wav Left'.format
+        #       (str(os.getpid()), t_queue.qsize()), end='')
+
+def listener(q, total_num=10000):
+    pbar = tqdm(total=total_num, ncols=60)
+    for item in iter(q.get, None):
+     pbar.update()
 
 def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
     """
@@ -342,67 +553,152 @@ def prepare_csv(seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
 
     msg = '\t"Creating csv lists in  %s..."' % (csv_file)
     logger.info(msg)
+    # print(os.getpid(), " main process")
 
     csv_output = [["ID", "duration", "wav", "start", "stop", "spk_id"]]
 
     # For assigning unique ID to each chunk
     my_sep = "--"
     entry = []
+
+    manager = Manager()
+    lock_t = manager.Lock()
+
+    t_queue = manager.Queue()
+    e_queue = manager.Queue()
+    q_queue = manager.Queue()
+
     # Processing all the wav files in the list
-    for wav_file in tqdm(wav_lst, dynamic_ncols=True):
-        # Getting sentence and speaker ids
-        try:
-            [spk_id, sess_id, utt_id] = wav_file.split("/")[-3:]
-        except ValueError:
-            logger.info(f"Malformed path: {wav_file}")
-            continue
-        audio_id = my_sep.join([spk_id, sess_id, utt_id.split(".")[0]])
+    # for wav_file in tqdm(wav_lst, dynamic_ncols=True):
+    #     # Getting sentence and speaker ids
+    #     try:
+    #         [spk_id, sess_id, utt_id] = wav_file.split("/")[-3:]
+    #     except ValueError:
+    #         logger.info(f"Malformed path: {wav_file}")
+    #         continue
+    #     audio_id = my_sep.join([spk_id, sess_id, utt_id.split(".")[0]])
+    #
+    #     # Reading the signal (to retrieve duration in seconds)
+    #     signal, fs = torchaudio.load(wav_file)
+    #     signal = signal.squeeze(0)
+    #     audio_duration = signal.shape[0] / SAMPLERATE
+    #
+    #     if random_segment:
+    #         start_sample = 0
+    #         stop_sample = signal.shape[0]
+    #
+    #         # Composition of the csv_line
+    #         csv_line = [
+    #             audio_id,
+    #             str(audio_duration),
+    #             wav_file,
+    #             start_sample,
+    #             stop_sample,
+    #             spk_id,
+    #         ]
+    #         entry.append(csv_line)
+    #     else:
+    #         uniq_chunks_list = _get_chunks(seg_dur, audio_id, audio_duration)
+    #         for chunk in uniq_chunks_list:
+    #             s, e = chunk.split("_")[-2:]
+    #             start_sample = int(float(s) * SAMPLERATE)
+    #             end_sample = int(float(e) * SAMPLERATE)
+    #
+    #             #  Avoid chunks with very small energy
+    #             mean_sig = torch.mean(np.abs(signal[start_sample:end_sample]))
+    #             if mean_sig < amp_th:
+    #                 continue
+    #
+    #             # Composition of the csv_line
+    #             csv_line = [
+    #                 chunk,
+    #                 str(audio_duration),
+    #                 wav_file,
+    #                 start_sample,
+    #                 end_sample,
+    #                 spk_id,
+    #             ]
+    #             entry.append(csv_line)
 
-        # Reading the signal (to retrieve duration in seconds)
-        signal, fs = torchaudio.load(wav_file)
-        signal = signal.squeeze(0)
+    for wav in tqdm(wav_lst, ncols=60):
+        t_queue.put(wav)
+    length_pbar = len(wav_lst)
 
-        if random_segment:
-            audio_duration = signal.shape[0] / SAMPLERATE
-            start_sample = 0
-            stop_sample = signal.shape[0]
+    # PrepareCsvProcess(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th)
+    nj = 16
+    proc = Process(target=listener, args=(q_queue, length_pbar))
+    proc.start()
+    pool = Pool(processes=nj)
+    for i in range(0, nj):
+        pool.apply_async(PrepareCsvProcess, args=(lock_t, t_queue, e_queue, my_sep, random_segment, seg_dur, amp_th, q_queue))
 
-            # Composition of the csv_line
-            csv_line = [
-                audio_id,
-                str(audio_duration),
-                wav_file,
-                start_sample,
-                stop_sample,
-                spk_id,
-            ]
-            entry.append(csv_line)
-        else:
-            audio_duration = signal.shape[0] / SAMPLERATE
+    pool.close()  # 关闭进程池，表示不能在往进程池中添加进程
+    pool.join()  # 等待进程池中的所有进程执行完毕，必须在close
 
-            uniq_chunks_list = _get_chunks(seg_dur, audio_id, audio_duration)
-            for chunk in uniq_chunks_list:
+    q_queue.put(None)
+    proc.join()
+
+    while not e_queue.empty():
+        entry.append(e_queue.get())
+
+    csv_output = csv_output + entry
+
+    # Writing the csv lines
+    with open(csv_file, mode="w") as csv_f:
+        csv_writer = csv.writer(
+            csv_f, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
+        )
+        for line in csv_output:
+            csv_writer.writerow(line)
+
+    # Final prints
+    msg = "\t%s successfully created!" % (csv_file)
+    logger.info(msg)
+
+def prepare_csv_fromscp(utt2dur_file,
+                        seg_dur, wav_lst, csv_file, random_segment=False, amp_th=0):
+    """
+    Creates the csv file given a list of wav files with utt2dur
+
+    Arguments
+    ---------
+    wav_lst : list
+        The list of wav files of a given data split.
+    csv_file : str
+        The path of the output csv file
+    random_segment: bool
+        Read random segments
+    amp_th: float
+        Threshold on the average amplitude on the chunk.
+        If under this threshold, the chunk is discarded.
+
+    Returns
+    -------
+    None
+    """
+    msg = '\t"Creating csv lists in  %s..."' % (csv_file)
+    logger.info(msg)
+    # print(os.getpid(), " main process")
+    uid2dur = {}
+    with open(utt2dur_file, 'r') as f:
+        for l in f.readlines():
+            uid, d = l.split()
+            uid2dur[uid] = float(d)
+
+    csv_output = [["ID", "duration", "wav", "start", "stop", "spk_id"]]
+    for wav in wav_lst:
+        [spk_id, sess_id, utt_id] = wav.split("/")[-3:]
+        audio_id = '--'.join([spk_id, sess_id, utt_id.split(".")[0]])
+        uid = '-'.join([spk_id, sess_id, utt_id.split(".")[0]])
+
+        audio_duration = uid2dur[uid]
+        uniq_chunks_list = _get_chunks(seg_dur, audio_id, audio_duration)
+        for chunk in uniq_chunks_list:
                 s, e = chunk.split("_")[-2:]
                 start_sample = int(float(s) * SAMPLERATE)
                 end_sample = int(float(e) * SAMPLERATE)
 
-                #  Avoid chunks with very small energy
-                mean_sig = torch.mean(np.abs(signal[start_sample:end_sample]))
-                if mean_sig < amp_th:
-                    continue
-
-                # Composition of the csv_line
-                csv_line = [
-                    chunk,
-                    str(audio_duration),
-                    wav_file,
-                    start_sample,
-                    end_sample,
-                    spk_id,
-                ]
-                entry.append(csv_line)
-
-    csv_output = csv_output + entry
+                csv_output.append([chunk, str(audio_duration), wav, start_sample, end_sample, spk_id])
 
     # Writing the csv lines
     with open(csv_file, mode="w") as csv_f:

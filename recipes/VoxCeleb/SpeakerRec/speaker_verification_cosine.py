@@ -12,6 +12,8 @@ Authors
     * Mirco Ravanelli 2020
 """
 import os
+import pdb
+import random
 import sys
 import torch
 import logging
@@ -19,9 +21,11 @@ import torchaudio
 import speechbrain as sb
 from tqdm.contrib import tqdm
 from hyperpyyaml import load_hyperpyyaml
-from speechbrain.utils.metric_stats import EER, minDCF
+from speechbrain.utils.metric_stats import EER, evaluate_kaldi_eer, minDCF
 from speechbrain.utils.data_utils import download_file
 from speechbrain.utils.distributed import run_on_main
+import pickle
+import numpy as np
 
 
 # Compute embeddings from the waveforms
@@ -41,9 +45,6 @@ def compute_embedding(wavs, wav_lens):
         feats = params["compute_features"](wavs)
         feats = params["mean_var_norm"](feats, wav_lens)
         embeddings = params["embedding_model"](feats, wav_lens)
-        embeddings = params["mean_var_norm_emb"](
-            embeddings, torch.ones(embeddings.shape[0]).to(embeddings.device)
-        )
     return embeddings.squeeze(1)
 
 
@@ -54,7 +55,7 @@ def compute_embedding_loop(data_loader):
     embedding_dict = {}
 
     with torch.no_grad():
-        for batch in tqdm(data_loader, dynamic_ncols=True):
+        for batch in tqdm(data_loader, ncols=100):
             batch = batch.to(params["device"])
             seg_ids = batch.id
             wavs, lens = batch.sig
@@ -65,14 +66,18 @@ def compute_embedding_loop(data_loader):
                     found = True
             if not found:
                 continue
-            wavs, lens = wavs.to(params["device"]), lens.to(params["device"])
+            wavs, lens = (
+                wavs.to(run_opts["device"]),
+                lens.to(run_opts["device"]),
+            )
             emb = compute_embedding(wavs, lens).unsqueeze(1)
             for i, seg_id in enumerate(seg_ids):
                 embedding_dict[seg_id] = emb[i].detach().clone()
+
     return embedding_dict
 
 
-def get_verification_scores(veri_test):
+def get_verification_scores(veri_test, fast=False):
     """ Computes positive and negative scores given the verification split.
     """
     scores = []
@@ -80,26 +85,51 @@ def get_verification_scores(veri_test):
     negative_scores = []
 
     save_file = os.path.join(params["output_folder"], "scores.txt")
+    if os.path.isfile(save_file):
+        with open(save_file, "r") as f:
+            for l in f.readlines():
+                enrol_id, test_id, lab_pair, score = l.split()
+                lab_pair = int(lab_pair)
+                score = float(score)
+
+                if lab_pair == 1:
+                    positive_scores.append(score)
+                else:
+                    negative_scores.append(score)
+
+                scores.append(score)
+
+        if len(scores) == len(veri_test):
+            logger.info("Loading scores from %s ..." % os.path.join(params["output_folder"], "scores.txt"))
+            return positive_scores, negative_scores
+        else:
+            positive_scores = []
+            negative_scores = []
+            scores = []
+
     s_file = open(save_file, "w")
 
     # Cosine similarity initialization
     similarity = torch.nn.CosineSimilarity(dim=-1, eps=1e-6)
 
     # creating cohort for score normalization
+    # pdb.set_trace()
     if "score_norm" in params:
-        train_cohort = torch.stack(list(train_dict.values()))
+        train_cohort = list(train_dict.values())
+        if fast:
+            random.shuffle(train_cohort)
+            train_cohort = train_cohort[:50000]
+
+        train_cohort = torch.stack(train_cohort)
+
+    enroll_cohort = {}
+    test_cohort = {}
 
     for i, line in enumerate(veri_test):
+        enrol_id = line.split(" ")[0].rstrip().split(".")[0].strip()
+        if enrol_id not in enroll_cohort:
+            enrol = enrol_dict[enrol_id]
 
-        # Reading verification file (enrol_file test_file label)
-        lab_pair = int(line.split(" ")[0].rstrip().split(".")[0].strip())
-        enrol_id = line.split(" ")[1].rstrip().split(".")[0].strip()
-        test_id = line.split(" ")[2].rstrip().split(".")[0].strip()
-        enrol = enrol_dict[enrol_id]
-        test = test_dict[test_id]
-
-        if "score_norm" in params:
-            # Getting norm stats for enrol impostors
             enrol_rep = enrol.repeat(train_cohort.shape[0], 1, 1)
             score_e_c = similarity(enrol_rep, train_cohort)
 
@@ -110,6 +140,15 @@ def get_verification_scores(veri_test):
 
             mean_e_c = torch.mean(score_e_c, dim=0)
             std_e_c = torch.std(score_e_c, dim=0)
+
+            enroll_cohort[enrol_id] = {
+                'mean_e_c': mean_e_c,
+                'std_e_c': std_e_c,
+            }
+
+        test_id = line.split(" ")[1].rstrip().split(".")[0].strip().split("/")[1]
+        if test_id not in test_cohort:
+            test = test_dict[test_id]
 
             # Getting norm stats for test impostors
             test_rep = test.repeat(train_cohort.shape[0], 1, 1)
@@ -122,6 +161,46 @@ def get_verification_scores(veri_test):
 
             mean_t_c = torch.mean(score_t_c, dim=0)
             std_t_c = torch.std(score_t_c, dim=0)
+
+            test_cohort[test_id] = {
+                'mean_t_c': mean_t_c,
+                'std_t_c': std_t_c,
+            }
+
+    for i, line in tqdm(enumerate(veri_test), ncols=100):
+
+        # Reading verification file (enrol_file test_file label)
+        lab_pair = int(line.split(" ")[2].rstrip().split(".")[0].strip())
+        enrol_id = line.split(" ")[0].rstrip().split(".")[0].strip()
+        test_id = line.split(" ")[1].rstrip().split(".")[0].strip().split("/")[1]
+
+        enrol = enrol_dict[enrol_id]
+        test = test_dict[test_id]
+
+        if "score_norm" in params:
+            # Getting norm stats for enrol impostors
+            # enrol_rep = enrol.repeat(train_cohort.shape[0], 1, 1)
+            # score_e_c = similarity(enrol_rep, train_cohort)
+            #
+            # if "cohort_size" in params:
+            #     score_e_c = torch.topk(
+            #         score_e_c, k=params["cohort_size"], dim=0
+            #     )[0]
+
+            mean_e_c = enroll_cohort[enrol_id]['mean_e_c']
+            std_e_c = enroll_cohort[enrol_id]['std_e_c']
+
+            # Getting norm stats for test impostors
+            # test_rep = test.repeat(train_cohort.shape[0], 1, 1)
+            # score_t_c = similarity(test_rep, train_cohort)
+            #
+            # if "cohort_size" in params:
+            #     score_t_c = torch.topk(
+            #         score_t_c, k=params["cohort_size"], dim=0
+            #     )[0]
+
+            mean_t_c = test_cohort[test_id]['mean_t_c']
+            std_t_c = test_cohort[test_id]['std_t_c']
 
         # Compute the score for the given sentence
         score = similarity(enrol, test)[0]
@@ -155,8 +234,6 @@ def dataio_prep(params):
 
     data_folder = params["data_folder"]
 
-    # 1. Declarations:
-
     # Train data (used for normalization)
     train_data = sb.dataio.dataset.DynamicItemDataset.from_csv(
         csv_path=params["train_data"], replacements={"data_root": data_folder},
@@ -179,7 +256,7 @@ def dataio_prep(params):
 
     datasets = [train_data, enrol_data, test_data]
 
-    # 2. Define audio pipeline:
+    # Define audio pipeline
     @sb.utils.data_pipeline.takes("wav", "start", "stop")
     @sb.utils.data_pipeline.provides("sig")
     def audio_pipeline(wav, start, stop):
@@ -194,10 +271,10 @@ def dataio_prep(params):
 
     sb.dataio.dataset.add_dynamic_item(datasets, audio_pipeline)
 
-    # 3. Set output:
+    # Set output
     sb.dataio.dataset.set_output_keys(datasets, ["id", "sig"])
 
-    # 4 Create dataloaders
+    # Create dataloaders
     train_dataloader = sb.dataio.dataloader.make_dataloader(
         train_data, **params["train_dataloader_opts"]
     )
@@ -226,7 +303,8 @@ if __name__ == "__main__":
     veri_file_path = os.path.join(
         params["save_folder"], os.path.basename(params["verification_file"])
     )
-    download_file(params["verification_file"], veri_file_path)
+    if not os.path.exists(veri_file_path):
+        download_file(params["verification_file"], veri_file_path)
 
     from voxceleb_prepare import prepare_voxceleb  # noqa E402
 
@@ -243,11 +321,10 @@ if __name__ == "__main__":
         save_folder=params["save_folder"],
         verification_pairs_file=veri_file_path,
         splits=["train", "dev", "test"],
-        split_ratio=[90, 10],
+        split_ratio=params["split_ratio"],
         seg_dur=3.0,
-        source=params["voxceleb_source"]
-        if "voxceleb_source" in params
-        else None,
+        source=params["voxceleb_source"] if "voxceleb_source" in params else None,
+        skip_prep=params["skip_prep"],
     )
 
     # here we create the datasets objects as well as tokenization and encoding
@@ -256,37 +333,65 @@ if __name__ == "__main__":
     # We download the pretrained LM from HuggingFace (or elsewhere depending on
     # the path given in the YAML file). The tokenizer is loaded at the same time.
     run_on_main(params["pretrainer"].collect_files)
-    params["pretrainer"].load_collected(params["device"])
+    params["pretrainer"].load_collected(run_opts["device"])
     params["embedding_model"].eval()
-    params["embedding_model"].to(params["device"])
+    params["embedding_model"].to(run_opts["device"])
 
     # Computing  enrollment and test embeddings
     logger.info("Computing enroll/test embeddings...")
 
-    # First run
-    enrol_dict = compute_embedding_loop(enrol_dataloader)
-    test_dict = compute_embedding_loop(test_dataloader)
+    enroll_dict_pickle = os.path.join(params["save_folder"], 'xvectors', 'enroll.pickle')
+    test_dict_pickle = os.path.join(params["save_folder"], 'xvectors', 'test.pickle')
+    train_dict_pickle = os.path.join(params["save_folder"], 'xvectors', 'train.pickle')
+    if not os.path.exists(os.path.join(params["save_folder"], 'xvectors')):
+        os.makedirs(os.path.join(params["save_folder"], 'xvectors'))
 
-    # Second run (normalization stats are more stable)
-    enrol_dict = compute_embedding_loop(enrol_dataloader)
-    test_dict = compute_embedding_loop(test_dataloader)
+    if os.path.exists(enroll_dict_pickle) and os.path.exists(test_dict_pickle):
+        with open(enroll_dict_pickle, 'rb') as f:
+            enrol_dict = pickle.load(f)
+        with open(test_dict_pickle, 'rb') as f:
+            test_dict = pickle.load(f)
+    else:
+        # First run
+        enrol_dict = compute_embedding_loop(enrol_dataloader)
+        test_dict = compute_embedding_loop(test_dataloader)
+
+        # Second run (normalization stats are more stable)
+        enrol_dict = compute_embedding_loop(enrol_dataloader)
+        test_dict = compute_embedding_loop(test_dataloader)
+
+        with open(enroll_dict_pickle, 'wb') as f:
+            pickle.dump(enrol_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        with open(test_dict_pickle, 'wb') as f:
+            pickle.dump(test_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     if "score_norm" in params:
-        train_dict = compute_embedding_loop(train_dataloader)
+        if os.path.exists(train_dict_pickle):
+            with open(train_dict_pickle, 'rb') as f:
+                train_dict = pickle.load(f)
+        else:
+            train_dict = compute_embedding_loop(train_dataloader)
+            with open(train_dict_pickle, 'wb') as f:
+                pickle.dump(train_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     # Compute the EER
-    logger.info("Computing EER..")
+    logger.info("Computing Scores ..")
     # Reading standard verification split
     with open(veri_file_path) as f:
         veri_test = [line.rstrip() for line in f]
 
-    positive_scores, negative_scores = get_verification_scores(veri_test)
+    positive_scores, negative_scores = get_verification_scores(veri_test)  # , fast=params['fast_score'])
     del enrol_dict, test_dict
 
-    eer, th = EER(torch.tensor(positive_scores), torch.tensor(negative_scores))
+    logger.info("Computing EER..")
+    # eer, th = evaluate_kaldi_eer(torch.tensor(positive_scores), torch.tensor(negative_scores), fast=params['fast_score'])
+    eer, th = evaluate_kaldi_eer(torch.tensor(positive_scores),
+                                 torch.tensor(negative_scores))  # , fast=params['fast_score'])
+
     logger.info("EER(%%)=%f", eer * 100)
 
     min_dcf, th = minDCF(
         torch.tensor(positive_scores), torch.tensor(negative_scores)
     )
-    logger.info("minDCF=%f", min_dcf * 100)
+    logger.info("minDCF(p_target=0.01)=%f", min_dcf * 100)

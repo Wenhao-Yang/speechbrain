@@ -10,6 +10,8 @@ Authors
 """
 
 import math
+import pdb
+
 import torch
 import logging
 import functools
@@ -25,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 def transducer_loss(
-    log_probs,
+    logits,
     targets,
     input_lens,
     target_lens,
@@ -37,7 +39,7 @@ def transducer_loss(
 
     Arguments
     ---------
-    predictions : torch.Tensor
+    logits : torch.Tensor
         Predicted tensor, of shape [batch, maxT, maxU, num_labels].
     targets : torch.Tensor
         Target tensor, without any blanks, of shape [batch, target_len].
@@ -53,7 +55,7 @@ def transducer_loss(
         If True, use Transducer loss implementation from torchaudio, otherwise,
         use Speechbrain Numba implementation.
     """
-    input_lens = (input_lens * log_probs.shape[1]).round().int()
+    input_lens = (input_lens * logits.shape[1]).round().int()
     target_lens = (target_lens * targets.shape[1]).round().int()
 
     if use_torchaudio:
@@ -68,7 +70,7 @@ def transducer_loss(
             raise ImportError(err_msg)
 
         return rnnt_loss(
-            log_probs,
+            logits,
             targets.int(),
             input_lens,
             target_lens,
@@ -78,6 +80,8 @@ def transducer_loss(
     else:
         from speechbrain.nnet.loss.transducer_loss import Transducer
 
+        # Transducer.apply function take log_probs tensor.
+        log_probs = logits.log_softmax(-1)
         return Transducer.apply(
             log_probs, targets, input_lens, target_lens, blank_index, reduction,
         )
@@ -391,6 +395,7 @@ def classification_error(
         )
 
     def error(predictions, targets):
+        """Computes the classification error."""
         predictions = torch.argmax(probabilities, dim=-1)
         return (predictions != targets).float()
 
@@ -712,6 +717,23 @@ def get_si_snr_with_pitwrapper(source, estimate_source):
     return loss
 
 
+def get_snr_with_pitwrapper(source, estimate_source):
+    """This function wraps si_snr calculation with the speechbrain pit-wrapper.
+    Arguments:
+    ---------
+    source: [B, T, E, C],
+        Where B is the batch size, T is the length of the sources, E is binaural channels, C is the number of sources
+        the ordering is made so that this loss is compatible with the class PitWrapper.
+    estimate_source: [B, T, E, C]
+        The estimated source.
+    """
+
+    pit_snr = PitWrapper(cal_snr)
+    loss, perms = pit_snr(source, estimate_source)
+
+    return loss
+
+
 def cal_si_snr(source, estimate_source):
     """Calculate SI-SNR.
 
@@ -741,7 +763,7 @@ def cal_si_snr(source, estimate_source):
     device = estimate_source.device.type
 
     source_lengths = torch.tensor(
-        [estimate_source.shape[0]] * estimate_source.shape[1], device=device
+        [estimate_source.shape[0]] * estimate_source.shape[-2], device=device
     )
     mask = get_mask(source, source_lengths)
     estimate_source *= mask
@@ -780,6 +802,53 @@ def cal_si_snr(source, estimate_source):
     return -si_snr.unsqueeze(0)
 
 
+def cal_snr(source, estimate_source):
+    """Calculate binaural channel SNR.
+    Arguments:
+    ---------
+    source: [T, E, B, C],
+        Where B is batch size, T is the length of the sources, E is binaural channels, C is the number of sources
+        the ordering is made so that this loss is compatible with the class PitWrapper.
+    estimate_source: [T, E, B, C]
+        The estimated source.
+    """
+    EPS = 1e-8
+    assert source.size() == estimate_source.size()
+    device = estimate_source.device.type
+
+    source_lengths = torch.tensor(
+        [estimate_source.shape[0]] * estimate_source.shape[-2], device=device
+    )
+    mask = get_mask(source, source_lengths)  # [T, E, 1]
+    estimate_source *= mask
+
+    num_samples = (
+        source_lengths.contiguous().reshape(1, -1, 1).float()
+    )  # [1, B, 1]
+    mean_target = torch.sum(source, dim=0, keepdim=True) / num_samples
+    mean_estimate = (
+        torch.sum(estimate_source, dim=0, keepdim=True) / num_samples
+    )
+    zero_mean_target = source - mean_target
+    zero_mean_estimate = estimate_source - mean_estimate
+    # mask padding position along T
+    zero_mean_target *= mask
+    zero_mean_estimate *= mask
+
+    # Step 2. SNR with PIT
+    # reshape to use broadcast
+    s_target = zero_mean_target  # [T, E, B, C]
+    s_estimate = zero_mean_estimate  # [T, E, B, C]
+    # SNR = 10 * log_10(||s_target||^2 / ||e_noise||^2)
+    # n_dim = [x for x in range(len(s_target.shape)-2)]
+    snr_beforelog = torch.sum(s_target ** 2, dim=0) / (
+        torch.sum((s_estimate - s_target) ** 2, dim=0) + EPS
+    )
+    snr = 10 * torch.log10(snr_beforelog + EPS)  # [B, C]
+
+    return -snr.unsqueeze(0)
+
+
 def get_mask(source, source_lengths):
     """
     Arguments
@@ -813,11 +882,11 @@ def get_mask(source, source_lengths):
              [0.],
              [1.]]])
     """
-    T, B, _ = source.size()
-    mask = source.new_ones((T, B, 1))
+    mask = source.new_ones(source.size()[:-1]).unsqueeze(-1).transpose(1, -2)
+    B = source.size(-2)
     for i in range(B):
-        mask[source_lengths[i] :, i, :] = 0
-    return mask
+        mask[source_lengths[i] :, i] = 0
+    return mask.transpose(-2, 1)
 
 
 class AngularMargin(nn.Module):
@@ -923,6 +992,7 @@ class AdditiveAngularMargin(AngularMargin):
         predictions : torch.Tensor
         """
         cosine = outputs.float()
+        cosine = torch.clamp(cosine, -1 + 1e-7, 1 - 1e-7)
         sine = torch.sqrt(1.0 - torch.pow(cosine, 2))
         phi = cosine * self.cos_m - sine * self.sin_m  # cos(theta + m)
         if self.easy_margin:
@@ -931,6 +1001,95 @@ class AdditiveAngularMargin(AngularMargin):
             phi = torch.where(cosine > self.th, phi, cosine - self.mm)
         outputs = (targets * phi) + ((1.0 - targets) * cosine)
         return self.scale * outputs
+
+
+class DistributeLoss(nn.Module):
+    """Distribute of Distance loss.
+
+    """
+
+    def __init__(self, stat_type="maxmargin", margin=0.2, p_target=0.1):
+        super(DistributeLoss, self).__init__()
+        self.stat_type = stat_type
+        self.margin = margin
+        self.p_target = p_target
+
+    def forward(self, dist, labels):
+        """
+        Args:
+            x: feature matrix with shape (batch_size, feat_dim).
+            labels: ground truth labels with shape (batch_size).
+        """
+        # norms = self.centers.data.norm(p=2, dim=1, keepdim=True).add(1e-14)
+        # self.centers.data = self.centers.data / norms * self.alpha
+
+        if len(labels.shape) == 1:
+            labels = labels.unsqueeze(1)
+
+        if len(dist.shape) == 3:
+            dist = dist.squeeze(1)
+
+        # pdb.set_trace()
+        # print(labels.shape, dist.shape)
+        positive_dist = dist.gather(dim=1, index=labels)
+
+        negative_label = torch.arange(dist.shape[1]).reshape(1, -1).repeat(positive_dist.shape[0], 1)
+        if labels.is_cuda:
+            negative_label = negative_label.cuda()
+
+        negative_label = negative_label.scatter(1, labels, -1)
+        negative_label = torch.where(negative_label != -1)[1].reshape(positive_dist.shape[0], -1)
+
+        negative_dist = dist.gather(dim=1, index=negative_label)
+
+        mean = positive_dist.mean()  # .clamp_min(0)
+
+        if self.stat_type == "stddmean":
+            loss = positive_dist.std() / mean.clamp(min=1e-6)
+            loss = loss ** 2
+
+        elif self.stat_type == "kurtoses":
+            diffs = positive_dist - mean
+            var = torch.mean(torch.pow(diffs, 2.0))
+            std = torch.pow(var, 0.5)
+            z_scores = diffs / std
+
+            kurtoses = torch.mean(torch.pow(z_scores, 4.0)) - 3.0
+            # skewness = torch.mean(torch.pow(z_scores, 3.0))
+            loss = (-kurtoses).clamp_min(0)
+        elif self.stat_type == "margin":
+            positive_theta = torch.acos(positive_dist)
+            loss = (2 * positive_theta - self.margin).clamp_min(0).mean()
+        elif self.stat_type == "margin1":
+            positive_theta = torch.acos(positive_dist)
+            loss = (positive_theta - self.margin).clamp_min(0).mean()
+        elif self.stat_type == "margin1sum":
+            positive_theta = torch.acos(positive_dist)
+            loss = (positive_theta - self.margin).clamp_min(0).sum()
+        elif self.stat_type == "marginsum":
+            positive_theta = torch.acos(positive_dist)
+            loss = (2 * positive_theta - self.margin).clamp_min(0).sum()
+        elif self.stat_type == "maxmargin":
+            positive_theta = torch.acos(positive_dist)
+            # loss = (2 * positive_theta - self.margin).clamp_min(0).max()
+            loss = (positive_theta - self.margin).clamp_min(0).max()
+        elif self.stat_type == "maxnegative":
+            negative_theta = torch.acos(negative_dist)
+            # loss = (2 * positive_theta - self.margin).clamp_min(0).max()
+            loss = (0.5 * np.pi - negative_theta - self.margin).clamp_min(0).max()
+
+        elif self.stat_type == "mindcf":
+            positive_theta = torch.acos(positive_dist)
+            negative_theta = torch.acos(negative_dist)
+
+            loss = self.p_target * positive_theta.clamp_min(self.margin).max() + (
+                    self.p_target - 1) * negative_theta.clamp_max(0.5 * np.pi - self.margin).min()
+
+        return loss
+
+    def __repr__(self):
+        return "DistributeLoss(margin=%f, stat_type=%s, self.p_target=%s)" % (
+            self.margin, self.stat_type, self.p_target)
 
 
 class LogSoftmaxWrapper(nn.Module):
@@ -1125,3 +1284,59 @@ def nll_loss_kd(
     # Loss averaging
     loss = torch.sum(loss.reshape(N_snt, max_len) * mask) / torch.sum(mask)
     return loss
+
+
+class ContrastiveLoss(nn.Module):
+    """Contrastive loss as used in wav2vec2.
+
+    Reference
+    ---------
+    wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations
+    https://arxiv.org/abs/2006.11477
+
+    Arguments
+    ---------
+    logit_temp : torch.Float
+        A temperature to devide the logits.
+
+    """
+
+    def __init__(self, logit_temp):
+        super().__init__()
+        self.logit_temp = logit_temp
+
+    def forward(self, x, y, negs):
+        """
+        Arguments
+        ----------
+        x : torch.Tensor
+            Encoded embeddings with shape (B, T, C).
+        y : torch.Tensor
+            Feature extractor target embeddings with shape (B, T, C).
+        negs : torch.Tensor
+            Negative embeddings from feature extractor with shape (N, B, T, C)
+        where N is number of negatives. Can be obtained with our sample_negatives
+        function (check in lobes/wav2vec2).
+        """
+        neg_is_pos = (y == negs).all(-1)
+        y = y.unsqueeze(0)
+        target_and_negatives = torch.cat([y, negs], dim=0)
+        logits = torch.cosine_similarity(
+            x.float(), target_and_negatives.float(), dim=-1
+        ).type_as(x)
+
+        if neg_is_pos.any():
+            logits[1:][neg_is_pos] = float("-inf")
+        # N, B, T -> T, B, N -> T*B, N
+        logits = logits.transpose(0, 2).reshape(-1, logits.size(0))
+
+        targets = torch.zeros(
+            (logits.size(0)), dtype=torch.long, device=logits.device
+        )
+        loss = F.cross_entropy(
+            logits / self.logit_temp, targets, reduction="sum"
+        )
+        accuracy = torch.sum(logits.argmax(-1) == 0) / (
+            logits.numel() / logits.size(-1)
+        )
+        return loss, accuracy

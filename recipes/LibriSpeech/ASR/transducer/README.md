@@ -14,7 +14,9 @@ pip install numba
 ```
 
 # How to run it
+```shell
 python train.py train/train.yaml
+```
 
 # Librispeech 100H Results
 
@@ -22,6 +24,7 @@ python train.py train/train.yaml
 |:-------------:|:---------------------------:| ------:| :-----------:| :------------------:| --------:| :-----------:|
 | 2020-10-22 | train.yaml |  5.2 | GS: 11.45 | BS (beam=4): 11.03 | Not Available | 1xRTX-8000 48GB |
 
+The output folder with the checkpoints and training logs is available [here](https://drive.google.com/drive/folders/17kEW0crU3tyP-8-u5TeoFom4ton_B-j2?usp=sharing).
 
 
 # **About SpeechBrain**

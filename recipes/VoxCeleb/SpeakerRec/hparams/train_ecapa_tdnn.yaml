@@ -5,13 +5,16 @@
 
 # Basic parameters
 seed: 1986
-__set_seed: !apply:torch.manual_seed [!ref <seed>]
-output_folder: !ref results/ecapa_augment/<seed>
+__set_seed: !apply:torch.manual_seed [ !ref <seed> ]
+__set_seed_rand: !apply:random.seed [ !ref <seed> ]
+__set_seed_np: !apply:numpy.random.seed [ !ref <seed> ]
+
+output_folder: !ref results/ecapa_official/<seed>
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
 # Data files
-data_folder: !PLACEHOLDER  # e.g. /path/to/Voxceleb
+data_folder: /home/yangwenhao/dataset/voxceleb2  # e.g. /path/to/Voxceleb
 train_annotation: !ref <save_folder>/train.csv
 valid_annotation: !ref <save_folder>/dev.csv
 
@@ -26,20 +29,24 @@ rir_folder: !ref <data_folder> # Change it if needed
 # Therefore you cannot use any files in VoxCeleb1 for training if you are using these lists for testing.
 verification_file: https://www.robots.ox.ac.uk/~vgg/data/voxceleb/meta/veri_test2.txt
 
-skip_prep: False
+skip_prep: True
 ckpt_interval_minutes: 15 # save checkpoint every N min
+delete_previous_ckpt: False
+
 
 # Training parameters
-number_of_epochs: 10
-batch_size: 32
+number_of_epochs: 40
+batch_size: 192
 lr: 0.001
 base_lr: 0.00000001
 max_lr: !ref <lr>
 step_size: 65000
 sample_rate: 16000
 sentence_len: 3.0 # seconds
+chunk_size: 3.0 # seconds
 shuffle: True
 random_chunk: True
+split_ratio: [ 95, 5 ]
 
 # Feature parameters
 n_mels: 80
@@ -48,31 +55,37 @@ right_frames: 0
 deltas: False
 
 # Number of speakers
-out_n_neurons: 7205 #1211 for vox1  # 5994 for vox2, 7205 for vox1+vox2
+out_n_neurons: 5994 #1211 for vox1  # 5994 for vox2, 7205 for vox1+vox2
+embedding_size: 192
 
 dataloader_options:
     batch_size: !ref <batch_size>
     shuffle: !ref <shuffle>
-    num_workers: 2
+    num_workers: 4
 
 # Functions
 compute_features: !new:speechbrain.lobes.features.Fbank
-    n_mels: !ref <n_mels>
-    left_frames: !ref <left_frames>
-    right_frames: !ref <right_frames>
-    deltas: !ref <deltas>
+   n_mels: !ref <n_mels>
+   left_frames: !ref <left_frames>
+   right_frames: !ref <right_frames>
+   deltas: !ref <deltas>
+# compute_features: !new:speechbrain.lobes.features.Spectrogram
+#     n_fft: 320
+#     win_length: 20
+
+#    channels: [ 1024, 1024, 1024, 1024, 3072 ]
 
 embedding_model: !new:speechbrain.lobes.models.ECAPA_TDNN.ECAPA_TDNN
     input_size: !ref <n_mels>
-    channels: [1024, 1024, 1024, 1024, 3072]
-    kernel_sizes: [5, 3, 3, 3, 1]
-    dilations: [1, 2, 3, 4, 1]
-    groups: [1, 1, 1, 1, 1]
+    channels: [ 512, 512, 512, 512, 1536 ]
+    kernel_sizes: [ 5, 3, 3, 3, 1 ]
+    dilations: [ 1, 2, 3, 4, 1 ]
+    groups: [ 1, 1, 1, 1, 1 ]
     attention_channels: 128
-    lin_neurons: 192
+    lin_neurons: !ref <embedding_size>
 
 classifier: !new:speechbrain.lobes.models.ECAPA_TDNN.Classifier
-    input_size: 192
+    input_size: !ref <embedding_size>
     out_neurons: !ref <out_n_neurons>
 
 epoch_counter: !new:speechbrain.utils.epoch_loop.EpochCounter
@@ -81,38 +94,38 @@ epoch_counter: !new:speechbrain.utils.epoch_loop.EpochCounter
 
 augment_wavedrop: !new:speechbrain.lobes.augment.TimeDomainSpecAugment
     sample_rate: !ref <sample_rate>
-    speeds: [100]
+    speeds: [ 100 ]
 
-augment_speed: !new:speechbrain.lobes.augment.TimeDomainSpecAugment
-    sample_rate: !ref <sample_rate>
-    speeds: [95, 100, 105]
+#augment_speed: !new:speechbrain.lobes.augment.TimeDomainSpecAugment
+#    sample_rate: !ref <sample_rate>
+#    speeds: [95, 100, 105]
 
-add_rev: !new:speechbrain.lobes.augment.EnvCorrupt
-    openrir_folder: !ref <rir_folder>
-    openrir_max_noise_len: 3.0  # seconds
-    reverb_prob: 1.0
-    noise_prob: 0.0
-    noise_snr_low: 0
-    noise_snr_high: 15
-    rir_scale_factor: 1.0
-
-add_noise: !new:speechbrain.lobes.augment.EnvCorrupt
-    openrir_folder: !ref <rir_folder>
-    openrir_max_noise_len: 3.0  # seconds
-    reverb_prob: 0.0
-    noise_prob: 1.0
-    noise_snr_low: 0
-    noise_snr_high: 15
-    rir_scale_factor: 1.0
-
-add_rev_noise: !new:speechbrain.lobes.augment.EnvCorrupt
-    openrir_folder: !ref <rir_folder>
-    openrir_max_noise_len: 3.0  # seconds
-    reverb_prob: 1.0
-    noise_prob: 1.0
-    noise_snr_low: 0
-    noise_snr_high: 15
-    rir_scale_factor: 1.0
+#add_rev: !new:speechbrain.lobes.augment.EnvCorrupt
+#    openrir_folder: !ref <rir_folder>
+#    openrir_max_noise_len: 3.0  # seconds
+#    reverb_prob: 1.0
+#    noise_prob: 0.0
+#    noise_snr_low: 0
+#    noise_snr_high: 15
+#    rir_scale_factor: 1.0
+#
+#add_noise: !new:speechbrain.lobes.augment.EnvCorrupt
+#    openrir_folder: !ref <rir_folder>
+#    openrir_max_noise_len: 3.0  # seconds
+#    reverb_prob: 0.0
+#    noise_prob: 1.0
+#    noise_snr_low: 0
+#    noise_snr_high: 15
+#    rir_scale_factor: 1.0
+#
+#add_rev_noise: !new:speechbrain.lobes.augment.EnvCorrupt
+#    openrir_folder: !ref <rir_folder>
+#    openrir_max_noise_len: 3.0  # seconds
+#    reverb_prob: 1.0
+#    noise_prob: 1.0
+#    noise_snr_low: 0
+#    noise_snr_high: 15
+#    rir_scale_factor: 1.0
 
 
 # Definition of the augmentation pipeline.
@@ -120,26 +133,29 @@ add_rev_noise: !new:speechbrain.lobes.augment.EnvCorrupt
 # in sequence. If concat_augment = True, all the augmented signals
 # # are concatenated in a single big batch.
 
-augment_pipeline: [
-    !ref <augment_wavedrop>,
-    !ref <augment_speed>,
-    !ref <add_rev>,
-    !ref <add_noise>,
-    !ref <add_rev_noise>
-]
+#augment_pipeline: [
+#    !ref <augment_wavedrop>,
+#    !ref <augment_speed>,
+#    !ref <add_rev>,
+#    !ref <add_noise>,
+#    !ref <add_rev_noise>
+#]
+
+augment_pipeline: [ ]
 concat_augment: True
 
 mean_var_norm: !new:speechbrain.processing.features.InputNormalization
     norm_type: sentence
     std_norm: False
 
+#augment_wavedrop: !ref <augment_wavedrop>
+#augment_speed: !ref <augment_speed>
+#add_rev: !ref <add_rev>
+#add_noise: !ref <add_noise>
+#add_rev_noise: !ref <add_rev_noise>
+
 modules:
     compute_features: !ref <compute_features>
-    augment_wavedrop: !ref <augment_wavedrop>
-    augment_speed: !ref <augment_speed>
-    add_rev: !ref <add_rev>
-    add_noise: !ref <add_noise>
-    add_rev_noise: !ref <add_rev_noise>
     embedding_model: !ref <embedding_model>
     classifier: !ref <classifier>
     mean_var_norm: !ref <mean_var_norm>
@@ -149,16 +165,26 @@ compute_cost: !new:speechbrain.nnet.losses.LogSoftmaxWrapper
         margin: 0.2
         scale: 30
 
-compute_error: !name:speechbrain.nnet.losses.classification_error
+# compute_error: !name:speechbrain.nnet.losses.classification_error
 
 opt_class: !name:torch.optim.Adam
     lr: !ref <lr>
-    weight_decay: 0.000002
+    weight_decay: 0.00002
+
+# opt_class: !name:torch.optim.SGD
+#     lr: !ref <lr>
+#     momentum: 0.9
+#     weight_decay: 0.00002
 
 lr_annealing: !new:speechbrain.nnet.schedulers.CyclicLRScheduler
-    base_lr: !ref <base_lr>
-    max_lr: !ref <max_lr>
-    step_size: !ref <step_size>
+   base_lr: !ref <base_lr>
+   max_lr: !ref <max_lr>
+   step_size: !ref <step_size>
+# lr_annealing: !new:speechbrain.nnet.schedulers.ReduceLROnPlateau
+#     lr_min: !ref <base_lr>
+#     factor: 0.1
+#     patience: 2
+
 
 # Logging + checkpoints
 train_logger: !new:speechbrain.utils.train_logger.FileTrainLogger
@@ -175,3 +201,4 @@ checkpointer: !new:speechbrain.utils.checkpoints.Checkpointer
         classifier: !ref <classifier>
         normalizer: !ref <mean_var_norm>
         counter: !ref <epoch_counter>
+        lr_annealing: !ref <lr_annealing>

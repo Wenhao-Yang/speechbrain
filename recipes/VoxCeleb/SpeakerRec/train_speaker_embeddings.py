@@ -155,7 +155,7 @@ def dataio_prep(hparams):
     def audio_pipeline(wav, start, stop, duration):
         if hparams["random_chunk"]:
             duration_sample = int(duration * hparams["sample_rate"])
-            start = random.randint(0, duration_sample - snt_len_sample - 1)
+            start = random.randint(0, duration_sample - snt_len_sample)
             stop = start + snt_len_sample
         else:
             start = int(start)
@@ -215,7 +215,6 @@ if __name__ == "__main__":
 
     # Dataset prep (parsing VoxCeleb and annotation into csv files)
     from voxceleb_prepare import prepare_voxceleb  # noqa
-
     run_on_main(
         prepare_voxceleb,
         kwargs={
@@ -223,8 +222,9 @@ if __name__ == "__main__":
             "save_folder": hparams["save_folder"],
             "verification_pairs_file": veri_file_path,
             "splits": ["train", "dev"],
-            "split_ratio": [90, 10],
+            "split_ratio": hparams["split_ratio"],
             "seg_dur": hparams["sentence_len"],
+            "skip_prep": hparams["skip_prep"],
         },
     )
 

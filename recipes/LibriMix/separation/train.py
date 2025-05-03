@@ -36,6 +36,8 @@ from tqdm import tqdm
 import csv
 import logging
 
+logger = logging.getLogger(__name__)
+
 
 # Define training procedure
 class Separation(sb.Brain):
@@ -211,7 +213,7 @@ class Separation(sb.Brain):
             else:
                 self.save_audio(snt_id[0], mixture, targets, predictions)
 
-        return loss.detach()
+        return loss.mean().detach()
 
     def on_stage_end(self, stage, stage_loss, epoch):
         """Gets called at the end of a epoch."""
@@ -557,9 +559,6 @@ if __name__ == "__main__":
     # Initialize ddp (useful only for multi-GPU DDP training)
     sb.utils.distributed.ddp_init_group(run_opts)
 
-    # Logger info
-    logger = logging.getLogger(__name__)
-
     # Create experiment directory
     sb.create_experiment_directory(
         experiment_directory=hparams["output_folder"],
@@ -577,7 +576,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Data preparation
-    from recipes.LibriMix.prepare_data import prepare_librimix
+    from prepare_data import prepare_librimix
 
     run_on_main(
         prepare_librimix,
@@ -632,7 +631,17 @@ if __name__ == "__main__":
                     os.path.normpath(hparams["base_folder_dm"]) + "_processed"
                 )
 
-        train_data = dynamic_mix_data_prep(hparams)
+        dm_hparams = {
+            "train_data": hparams["train_data"],
+            "data_folder": hparams["data_folder"],
+            "base_folder_dm": hparams["base_folder_dm"],
+            "sample_rate": hparams["sample_rate"],
+            "num_spks": hparams["num_spks"],
+            "training_signal_len": hparams["training_signal_len"],
+            "dataloader_opts": hparams["dataloader_opts"],
+        }
+
+        train_data = dynamic_mix_data_prep(dm_hparams)
         _, valid_data, test_data = dataio_prep(hparams)
     else:
         train_data, valid_data, test_data = dataio_prep(hparams)
@@ -640,7 +649,9 @@ if __name__ == "__main__":
     # Load pretrained model if pretrained_separator is present in the yaml
     if "pretrained_separator" in hparams:
         run_on_main(hparams["pretrained_separator"].collect_files)
-        hparams["pretrained_separator"].load_collected()
+        hparams["pretrained_separator"].load_collected(
+            device=run_opts["device"]
+        )
 
     # Brain class initialization
     separator = Separation(
